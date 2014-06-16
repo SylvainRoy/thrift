@@ -97,3 +97,5 @@
 		       `((len1   . 0)
 			 (len2   . ,(length string))
 			 (data   . ,string)))))
+
+(provide 'thrift-binary-protocol)

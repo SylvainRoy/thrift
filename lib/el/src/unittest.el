@@ -10,8 +10,11 @@
 
 (require 'ert)
 
-(add-to-list 'load-path "./protocol")
-(load "TBinaryProtocol.el")
+(add-to-list 'load-path "./")
+(require 'thrift-binary-protocol)
+
+;(add-to-list 'load-path "./protocol")
+;(load "TBinaryProtocol.el")
 
 (ert-deftest TBinaryProtocol-writeBool-test ()
   "Tests the encoding/decoding of Bool using the TBinaryProtocol."
