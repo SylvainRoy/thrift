@@ -2,100 +2,165 @@
 
 ;; Author: Sylvain Roy <sylvain.roy@m4x.org>
 
+(require 'thrift-base-protocol)
 (require 'bindat)
 
 
-(defun writeMessageBegin (buffer name type seqid)
-  (error "todo: not yet implemented"))
+(defclass thrift-binary-protocol (thrift-base-protocol)
+  ((transport :initarg :transport
+	      :document "Transport object to send/recv data.")
+   (strictRead :initarg :strictRead
+	       :initform nil)
+   (strictWrite :initarg :strictWrite
+		:initform t))
+  "Implementation of the Thrift binary protocol.")
 
-(defun writeMessageEnd (buffer)
-  buffer)
 
-(defun writeStructBegin (buffer)
-  buffer)
+(defmethod thrift-protocol-writeMessageBegin ((prot thrift-binary-protocol) name type seq)
+  (error "todo"))
 
-(defun writeStructEnd (buffer)
-  buffer)
+(defmethod thrift-protocol-writeMessageEnd ((prot thrift-binary-protocol))
+  nil)
 
-(defun writeFieldBegin (buffer name type id)
-  (writeI16 (writeByte buffer type) id))
+(defmethod thrift-protocol-writeStructBegin ((prot thrift-binary-protocol) name)
+  nil)
 
-(defun writeFieldEnd (buffer)
-  buffer)
+(defmethod thrift-protocol-writeStructEnd ((prot thrift-binary-protocol))
+  nil)
 
-(defun writeFieldStop (buffer)
-  (error "todo: not yet implemented."))
+(defmethod thrift-protocol-writeFieldBegin ((prot thrift-binary-protocol) name type id)
+  (thrift-protocol-writeByte prot type)
+  (thrift-protocol-writeI16  prot id))
 
-(defun writeMapBegin (buffer ktype vtype size)
-  (error "todo: not yet implemented."))
+(defmethod thrift-protocol-writeFieldEnd ((prot thrift-binary-protocol))
+  nil)
 
-(defun writeMapEnd (buffer)
-  buffer)
+(defmethod thrift-protocol-writeFieldStop ((prot thrift-binary-protocol))
+  (error "todo"))
 
-(defun writeListBegin (buffer ktype vtype size)
-  (error "todo: not yet implemented."))
+(defmethod thrift-protocol-writeMapBegin ((prot thrift-binary-protocol) ktype vtype size)
+  (error "todo"))
 
-(defun writeListEnd (buffer)
-  buffer)
+(defmethod thrift-protocol-writeMapEnd ((prot thrift-binary-protocol))
+  nil)
 
-(defun writeSetBegin (buffer ktype vtype size)
-  (error "todo: not yet implemented."))
+(defmethod thrift-protocol-writeListBegin ((prot thrift-binary-protocol) etype size)
+  (error "todo"))
 
-(defun writeSetEnd (buffer)
-  buffer)
+(defmethod thrift-protocol-writeListEnd ((prot thrift-binary-protocol))
+  nil)
 
-(defun writeBool (buffer bool)
-  "Encode a boolean."
-  (writeByte buffer (if bool 1 0)))
+(defmethod thrift-protocol-writeSetBegin ((prot thrift-binary-protocol) etype size)
+  (error "todo"))
 
-(defun writeByte (buffer value)
-  "Encode a signed integer on one bytes."
-  (concat buffer
-	  (bindat-pack '((data u8))
-		       `((data . ,value)))))
+(defmethod thrift-protocol-writeSetEnd ((prot thrift-binary-protocol))
+  nil)
 
-(defun writeI16 (buffer value)
-  "Encode a signed integer on 2 bytes."
-  (concat buffer
-	  (bindat-pack '((data u16))
-		       `((data . ,value)))))
+(defmethod thrift-protocol-writeBool ((prot thrift-binary-protocol) bool)
+  (thrift-protocol-writeByte prot (if bool 1 0)))
 
-(defun writeI32 (buffer value)
-  "Encode a signed integer on 4 bytes."
+(defmethod thrift-protocol-writeByte ((prot thrift-binary-protocol) byte)
+  (thrift-transport-write (oref prot transport)
+			  (bindat-pack '((data u8))
+				       `((data . ,byte)))))
+
+(defmethod thrift-protocol-writeI16 ((prot thrift-binary-protocol) i16)
+  (thrift-transport-write (oref prot transport)
+			  (bindat-pack '((data u16))
+				       `((data . ,i16)))))
+
+(defmethod thrift-protocol-writeI32 ((prot thrift-binary-protocol) i32)
   ;; Emacs does not cope with integer on 32bits.
   ;; This function only works for signed number that can be encoded on 24bits.
   (let ((of (if (>= value 0) 0 #xff)))
-    (concat buffer
-	    (bindat-pack '((overflow u8)
-			   (data     u24))
-			 `((overflow . ,of)
-			   (data     . ,value))))))
+    (thrift-transport-write (oref prot transport)
+			    (bindat-pack '((overflow u8)
+					   (data     u24))
+					 `((overflow . ,of)
+					   (data     . ,i32))))))
 
-(defun writeI64 (buffer value)
-  "Encode a signed integer on 4 bytes."
-  ;; Emacs does not cope with integer on 32bits.
+(defmethod thrift-protocol-writeI64 ((prot thrift-binary-protocol) i64)
+  ;; Emacs does not cope with integer on 64bits.
   ;; This function only works for signed number that can be encoded on 24bits.
   (let ((of1 (if (>= value 0) 0 #xffffff))
 	(of2 (if (>= value 0) 0 #xffff)))
-    (concat buffer
-	    (bindat-pack '((overflow1   u24)
-			   (overflow2   u16)
-			   (data        u24))
-			 `((overflow1 . ,of1)
-			   (overflow2 . ,of2)
-			   (data      . ,value))))))
+    (thrift-transport-write (oref prot transport)
+			    (bindat-pack '((overflow1   u24)
+					   (overflow2   u16)
+					   (data        u24))
+					 `((overflow1 . ,of1)
+					   (overflow2 . ,of2)
+					   (data      . ,value))))))
 
-(defun writeDouble (buffer value)
-  (error "todo: writeDouble not yet implemented"))
+(defmethod thrift-protocol-writeDouble ((prot thrift-binary-protocol) double)
+  (error "todo"))
 
-(defun writeString (buffer string)
-  "Encode a string."
-  (concat buffer
-	  (bindat-pack '((len1	   u8)
-			 (len2	   u24)
-			 (data     str (len2)))
-		       `((len1   . 0)
-			 (len2   . ,(length string))
-			 (data   . ,string)))))
+(defmethod thrift-protocol-writeString ((prot thrift-binary-protocol) string)
+  (thrift-transport-write (oref prot transport)
+			  (bindat-pack '((len1	   u8)
+					 (len2	   u24)
+					 (data     str (len2)))
+				       `((len1   . 0)
+					 (len2   . ,(length string))
+					 (data   . ,string)))))
+
+
+(defmethod thrift-protocol-readMessageBegin ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readMessageEnd ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readStructBegin ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readStructEnd ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readFieldBegin ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readFieldEnd ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readMapBegin ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readMapEnd ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readListBegin ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readListEnd ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readSetBegin ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readSetEnd ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readBool ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readByte ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readI16 ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readI32 ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readI64 ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readDouble ((prot thrift-binary-protocol))
+  (error "todo."))
+
+(defmethod thrift-protocol-readString ((prot thrift-binary-protocol))
+  (error "todo."))
+
 
 (provide 'thrift-binary-protocol)

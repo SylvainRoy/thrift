@@ -1,23 +1,42 @@
-;;; TBinaryProtocol.el ---Very basic Thrift transport layer based on string.
+(require 'thrift-base-transport)
 
-;; Author: Sylvain Roy <sylvain.roy@m4x.org>
+(defclass thrift-string-transport (thrift-base-transport)
+  ((recv :initarg :recv
+	 :initform ""
+	 :writer set-recv
+	 :reader get-recv
+	 :document "Received from the transport.")
+   (sent :initarg :sent
+	 :initform ""
+	 :writer set-sent
+	 :reader get-sent
+	 :document "Sent to the transport."))
+  "A basic string implementation of a transport for testing.")
 
-(defun create-string-transport (in)
-  (list in ""))
+(defmethod get-sent-and-reset((trans thrift-string-transport))
+  "Receive data."
+  (setq o (oref trans sent))
+  (oset trans sent "")
+  o)
 
-(defun open-string-transport (io)
-  io)
+(defmethod thrift-transport-read ((trans thrift-string-transport))
+  "Receive data."
+  (setq o (oref trans recv))
+  (oset trans recv "")
+  o)
 
-(defun close-string-transport (io)
-  io)
+(defmethod thrift-transport-write ((trans thrift-string-transport) data)
+  "Write data."
+  (oset trans sent (concat (oref trans sent)
+			   data)))
 
-(defun read-string-transport (io)
-  (car io))
+(defmethod thrift-transport-open ((trans thrift-string-transport))
+  "")
 
-(defun write-string-transport (io out)
-  (list (car io) (concat (car (cdr io)) out)))
+(defmethod thrift-transport-close ((trans thrift-string-transport))
+  "")
 
-(defun flush-string-transport (io)
-  io)
+(defmethod thrift-transport-flush ((trans thrift-string-transport))
+  "")
 
 (provide 'thrift-string-transport)
