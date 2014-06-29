@@ -6,6 +6,9 @@
 (require 'bindat)
 
 
+(setq thrift-binary-protocol-version-1 #x8001)
+
+
 (defclass thrift-binary-protocol (thrift-base-protocol)
   ((transport :initarg :transport
 	      :document "Transport object to send/recv data.")
@@ -17,7 +20,17 @@
 
 
 (defmethod thrift-protocol-writeMessageBegin ((prot thrift-binary-protocol) name type seq)
-  (error "todo"))
+  (if (oref prot strictWrite)
+      (progn 
+	(thrift-protocol-writeI16 prot thrift-binary-protocol-version-1)
+	(thrift-protocol-writeByte prot 0)
+	(thrift-protocol-writeByte prot type)
+	(thrift-protocol-writeString prot name)
+	(thrift-protocol-writeI32 prot seq))
+    (progn
+      (thrift-protocol-writeString prot name)
+      (thrift-protocol-writeByte prot type)
+	(thrift-protocol-writeI32 prot seq))))
 
 (defmethod thrift-protocol-writeMessageEnd ((prot thrift-binary-protocol))
   nil)
@@ -72,7 +85,7 @@
 (defmethod thrift-protocol-writeI32 ((prot thrift-binary-protocol) i32)
   ;; Emacs does not cope with integer on 32bits.
   ;; This function only works for signed number that can be encoded on 24bits.
-  (let ((of (if (>= value 0) 0 #xff)))
+  (let ((of (if (>= i32 0) 0 #xff)))
     (thrift-transport-write (oref prot transport)
 			    (bindat-pack '((overflow u8)
 					   (data     u24))
@@ -82,15 +95,15 @@
 (defmethod thrift-protocol-writeI64 ((prot thrift-binary-protocol) i64)
   ;; Emacs does not cope with integer on 64bits.
   ;; This function only works for signed number that can be encoded on 24bits.
-  (let ((of1 (if (>= value 0) 0 #xffffff))
-	(of2 (if (>= value 0) 0 #xffff)))
+  (let ((of1 (if (>= i64 0) 0 #xffffff))
+	(of2 (if (>= i64 0) 0 #xffff)))
     (thrift-transport-write (oref prot transport)
 			    (bindat-pack '((overflow1   u24)
 					   (overflow2   u16)
 					   (data        u24))
 					 `((overflow1 . ,of1)
 					   (overflow2 . ,of2)
-					   (data      . ,value))))))
+					   (data      . ,i64))))))
 
 (defmethod thrift-protocol-writeDouble ((prot thrift-binary-protocol) double)
   (error "todo"))
