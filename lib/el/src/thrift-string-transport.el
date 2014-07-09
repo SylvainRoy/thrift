@@ -19,10 +19,12 @@
   (oset trans sent "")
   o)
 
-(defmethod thrift-transport-read ((trans thrift-string-transport))
+(defmethod thrift-transport-read ((trans thrift-string-transport) size)
   "Receive data."
-  (setq o (oref trans recv))
-  (oset trans recv "")
+  (setq data (oref trans recv))
+  (setq toread (min size (length data)))
+  (setq o (substring data 0 toread))
+  (oset trans recv (substring data toread (length data)))
   o)
 
 (defmethod thrift-transport-write ((trans thrift-string-transport) data)

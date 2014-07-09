@@ -13,7 +13,7 @@
   "Close the transport."
   (error "This method should be defined in subclasses."))
 
-(defmethod thrift-transport-read ((trans thrift-base-transport))
+(defmethod thrift-transport-read ((trans thrift-base-transport) size)
   "Receive data."
   (error "This method should be defined in subclasses."))
 

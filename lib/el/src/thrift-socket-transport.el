@@ -3,9 +3,9 @@
 
 (defclass thrift-socket-transport (thrift-base-transport)
   ((network-process :initform nil
-		    :document "The underlying network-process object.")
+                    :document "The underlying network-process object.")
    (recv-buffer :initform ""
-		:document "Buffer to store incoming data."))
+                :document "Buffer to store incoming data."))
   "TCP tranport implementation.")
 
 
@@ -13,25 +13,27 @@
   "Open the transport."
   (defun trans-filter (process data)
     (oset trans recv-buffer
-	  (concat (oref trans recv-buffer) data)))
+          (concat (oref trans recv-buffer) data)))
   (defun trans-sentinel (process event)
     (message event))
   (oset trans network-process (make-network-process :name "*thrift*"
-						    :type nil
-						    :server nil
-						    :host "127.0.0.1"
-						    :service 10000
-						    :filter 'trans-filter
-						    :sentinel 'trans-sentinel)))
+                                                    :type nil
+                                                    :server nil
+                                                    :host "127.0.0.1"
+                                                    :service 10000
+                                                    :filter 'trans-filter
+                                                    :sentinel 'trans-sentinel)))
 
 (defmethod thrift-transport-close ((trans thrift-base-transport))
   "Close the transport."
   (delete-process (oref trans network-process)))
 
-(defmethod thrift-transport-read ((trans thrift-base-transport))
+(defmethod thrift-transport-read ((trans thrift-base-transport) size)
   "Receive data."
-  (setq o (oref trans recv-buffer))
-  (oset trans recv-buffer "")
+  (setq data (oref trans recv))
+  (setq toread (min size (length data)))
+  (setq o (substring data 0 toread))
+  (oset trans recv (substring data toread (length data)))
   o)
 
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)
