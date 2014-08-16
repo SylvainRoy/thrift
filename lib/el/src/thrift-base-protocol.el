@@ -2,8 +2,9 @@
 
 
 (defclass thrift-base-protocol ()
-  ()
-  "A 'virtual' class for thrift protocols.")
+  ((transport :initarg :transport
+	      :document "Transport object to send/recv data."))
+  "Base class of thrift protocols.")
 
 
 (defmethod thrift-protocol-writeMessageBegin ((prot thrift-base-protocol) name type seq)

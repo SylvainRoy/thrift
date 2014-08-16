@@ -1,0 +1,22 @@
+(add-to-list 'load-path "./")
+(require 'thrift-socket-transport)
+(require 'thrift-binary-protocol)
+
+(setq transport (thrift-socket-transport "socketTrans"))
+(thrift-transport-open transport)
+(setq protocol (thrift-binary-protocol "BinaryProt" :transport transport))
+
+;;(thrift-protocol-writeMessageBegin protocol "name" 1 2)
+;;(thrift-protocol-writeI32 protocol -1)
+;;(thrift-protocol-writeBool protocol nil)
+;;(thrift-protocol-writeByte protocol 0)
+;;(thrift-protocol-writeI16 protocol 0)
+;;(thrift-protocol-writeI32 protocol 0)
+;;(thrift-protocol-writeI64 protocol 0)
+;;(thrift-protocol-writeString protocol "a")
+;;(thrift-protocol-writeFieldBegin protocol "name" 1 2)
+(thrift-protocol-writeMapBegin protocol 1 2 3)
+
+(setq recv (thrift-transport-read transport))
+(message (format "recv: %s" recv))
+(thrift-transport-close transport)

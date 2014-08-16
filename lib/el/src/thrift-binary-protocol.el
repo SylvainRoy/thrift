@@ -10,9 +10,7 @@
 
 
 (defclass thrift-binary-protocol (thrift-base-protocol)
-  ((transport :initarg :transport
-	      :document "Transport object to send/recv data.")
-   (strictRead :initarg :strictRead
+  ((strictRead :initarg :strictRead
 	       :initform nil)
    (strictWrite :initarg :strictWrite
 		:initform t))

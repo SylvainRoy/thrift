@@ -1,28 +1,29 @@
 (require 'eieio)
 
 (defclass thrift-base-transport ()
-  ()
+  ((on-data-received :initform ()
+		     :document "The function called upon reception of data."))
   "A 'virtual' class for thrift transports.")
 
 
 (defmethod thrift-transport-open ((trans thrift-base-transport))
   "Open the transport."
-  (error "This method should be defined in subclasses."))
+  (error "The method 'open' should be defined in subclasses."))
 
 (defmethod thrift-transport-close ((trans thrift-base-transport))
   "Close the transport."
-  (error "This method should be defined in subclasses."))
+  (error "The method 'close' should be defined in subclasses."))
 
 (defmethod thrift-transport-read ((trans thrift-base-transport) size)
   "Receive data."
-  (error "This method should be defined in subclasses."))
+  (error "The method 'read' should be defined in subclasses."))
 
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)
   "Write data."
-  (error "This method should be defined in subclasses."))
+  (error "The method 'write' should be defined in subclasses."))
 
 (defmethod thrift-transport-flush ((trans thrift-base-transport))
   "Flush the transport."
-  (error "This method should be defined in subclasses."))
+  (error "The method 'flush' should be defined in subclasses."))
 
 (provide 'thrift-base-transport)
