@@ -26,13 +26,13 @@
 
 
 ;; todo: this one should be inherited from a parent class...
-(defmethod thrift-client-call ((client thrift-client-calculator) function parameters handler)
+(defmethod thrift-client-call ((client thrift-client-calculator) function parameters callback)
   "Calls a thrift service of the client."
+  (setq handler callback)
   ;; Build handler to call upon reception of the data of the reply
   (defun reply-data-handler ()
-    (message "reply-data-handler called")
     (setq res (thrift-client-recv client))
-    (funcall handler res))
+    (funcall handler nil res))
   ;; Register the handler in the transport
   (oset (oref (oref client protocol) transport)
 	on-data-received
@@ -51,41 +51,41 @@
   (setq name (car header))
   (setq type (car (cdr header)))
   (setq seqid (car (cdr (cdr header))))
-  ;; Decode result with ad-hoc decoder
-  (setq recv-fun (car (cdr (plist-get (oref client functions) name))))
-  (funcall send-fun client parameters))
-
-  (setq result (funcall (plist-get (oref client functions) name) ; don't think that this will work...
-			(ref client protocol)))
-  (thrift-protocol-readMessageEnd (oref client protocol)))
-
+  ;; Decode and return reply content with ad-hoc decoder
+  (setq recv-fun (car (cdr (plist-get (oref client functions) (intern name)))))
+  (funcall recv-fun client))
 
 ;;; ping functions ;;;
 
 (defmethod thrift-client-calculator-ping-send ((client thrift-client-calculator) parameters)
   "Send ping request."
-  ;; Encode and send message
   (thrift-protocol-writeMessageBegin (oref client protocol)
 				     "ping"
 				     thrift-cst-message-type-call
 				     (oref client seqid))
+  (thrift-protocol-writeStructBegin (oref client protocol) "ping_args")
+  (thrift-protocol-writeFieldStop (oref client protocol))
+  (thrift-protocol-writeStructEnd (oref client protocol))
   (thrift-protocol-writeMessageEnd (oref client protocol)))
 
 
-(defmethod thrift-client-calculator-ping-recv ((client thrift-client-calculator) handler)
-  "Decode content of ping response.")
-;todo: get that in elisp...
-
-    ;; iprot.readStructBegin()
-    ;; while True:
-    ;;   (fname, ftype, fid) = iprot.readFieldBegin()
-    ;;   if ftype == TType.STOP:
-    ;;     break
-    ;;   else:
-    ;;     iprot.skip(ftype)
-    ;;   iprot.readFieldEnd()
-    ;; iprot.readStructEnd()
-
+(defmethod thrift-client-calculator-ping-recv ((client thrift-client-calculator))
+  "Decode content of ping response."
+  (thrift-protocol-readStructBegin (oref client protocol))
+  (setq test t)
+  (while test
+    (setq res (thrift-protocol-readFieldBegin (oref client protocol)))
+    (setq fname (car res))
+    (setq ftype (car (cdr res)))
+    (setq fid (car (cdr (cdr res))))
+    (if (equal ftype 0)
+	(setq test nil)
+      (progn
+	(thrift-protocol-skip (oref client protocol) ftype) ; todo: I haven't implemented this method yet...
+	(thrift-protocol-readFieldEnd (oref client protocol))
+	)))
+  (thrift-protocol-readStructEnd (oref client protocol))
+  nil)
 
 ;;; addfunctions ;;;
 ;todo

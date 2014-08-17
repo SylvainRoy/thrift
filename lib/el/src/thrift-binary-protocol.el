@@ -135,14 +135,18 @@
 	(setq seqid (thrift-protocol-readI32 prot)))
     ;; 'strict write' not applied
     (progn
+      (message "readMessageBegin")
       (if (oref prot strictRead)
 	  (error "No protocol header found while 'strict read' asked"))
+      ;; Decode length of name
       (setq data (thrift-transport-read (oref prot transport) 3))
       (setq decoded (bindat-unpack '((d u24)) data))
       (setq len (bindat-get-field decoded 'd))
+      ;; Decode name
       (setq data (thrift-transport-read (oref prot transport) len))
       (setq decoded (bindat-unpack `((d str ,len)) data))
       (setq name (bindat-get-field decoded 'd))
+      ;; Decode type & seqid
       (setq type (thrift-protocol-readByte prot))
       (setq seqid (thrift-protocol-readI32 prot))))
   (list name type seqid))

@@ -36,11 +36,11 @@
 
 (defmethod thrift-transport-read ((trans thrift-base-transport) size)
   "Receive data."
-  (setq data (oref trans recv))
+  (setq data (oref trans recv-buffer))
   (setq toread (min size (length data)))
-  (setq o (substring data 0 toread))
-  (oset trans recv (substring data toread (length data)))
-  o)
+  (setq out (substring data 0 toread))
+  (oset trans recv-buffer (substring data toread (length data)))
+  (string-to-unibyte out))
 
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)
   "Write data."

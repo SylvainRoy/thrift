@@ -36,7 +36,7 @@
 (setq protocol (thrift-binary-protocol "MyProtocol" :transport transport))
 (setq client (thrift-client-calculator "MyCalculator" :protocol protocol))
 
-(defun handler (err, response)
+(defun handler (err response)
   "Function to handle the response from the thrift library."
   (message "response received!!!")
   (thrift-transport-close transport))
@@ -46,5 +46,3 @@
 ;; (thrift-client-call client 'add '(1 1) 'handler)
 ;; (thrift-client-call client 'divide '(1 0) 'handler)
 ;; (thrift-client-call client 'substract '(1 0) 'handler)
-
-(message "This is the end...")
