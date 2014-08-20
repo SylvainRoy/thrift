@@ -48,7 +48,7 @@
   nil)
 
 (defmethod thrift-protocol-writeFieldStop ((prot thrift-binary-protocol))
-  (thrift-protocol-writeByte prot (thrift-constant-type-value 'stop)))
+  (thrift-protocol-writeByte prot (thrift-constant-type 'stop)))
 
 (defmethod thrift-protocol-writeMapBegin ((prot thrift-binary-protocol) ktype vtype size)
   (thrift-protocol-writeByte prot ktype)
@@ -163,7 +163,7 @@
 
 (defmethod thrift-protocol-readFieldBegin ((prot thrift-binary-protocol))
   (setq type (thrift-protocol-readByte prot))
-  (if (equal type (thrift-constant-type-value 'stop))
+  (if (equal type (thrift-constant-type 'stop))
       (list nil type 0)
     (progn
       (setq id (thrift-protocol-readI16  prot))

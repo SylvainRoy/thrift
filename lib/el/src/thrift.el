@@ -2,12 +2,13 @@
 
 ;; Author: Sylvain Roy <sylvain.roy@m4x.org>
 
-(defconst thrift-cst-message-type-call      1)
-(defconst thrift-cst-message-type-reply     2)
-(defconst thrift-cst-message-type-exception 3)
-(defconst thrift-cst-message-type-oneway    4)
+(defun thrift-constant-message-type (name)
+  (cond   ((equal name 'call)      1)
+	  ((equal name 'reply)     2)
+	  ((equal name 'exception) 3)
+	  ((equal name 'oneway)    4)))
 
-(defun thrift-constant-type-value (name)
+(defun thrift-constant-type (name)
   (cond ((equal name 'stop)    0)
 	((equal name 'void)    1)
 	((equal name 'bool)    2)
