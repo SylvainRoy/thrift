@@ -24,13 +24,15 @@
 (require 'thrift-socket-transport)
 (require 'thrift-binary-protocol)
 
-
 ;; Require module generated for this tutorial
 (add-to-list 'load-path "./gen-el/")
 (require 'thrift-module-calculator)
 
+
 ;; Create a Calculator client using tcp transport and the thrift binary protocol
-(setq transport (thrift-socket-transport "MyTransport" :host "localhost" :port 9090))
+(setq transport (thrift-socket-transport "MyTransport"
+					 :host "localhost"
+					 :port 9090))
 (thrift-transport-open transport)
 
 (setq protocol (thrift-binary-protocol "MyProtocol" :transport transport))

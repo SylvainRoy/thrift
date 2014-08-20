@@ -7,6 +7,7 @@
 (require 'thrift)
 (require 'thrift-base-client)
 
+
 (defclass thrift-client-calculator (thrift-base-client)
   ((functions :initform (list
 			 'ping	     '(thrift-client-calculator-ping-send
