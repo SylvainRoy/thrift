@@ -6,6 +6,43 @@
 	      :document "Transport object to send/recv data."))
   "Base class of thrift protocols.")
 
+(defmethod thrift-protocol-skip ((prot thrift-base-protocol) type)
+  (cond ((equal type (thrift-constant-type 'stop)) nil)
+	((equal type (thrift-constant-type 'bool)) (thrift-protocol-readBool))
+	((equal type (thrift-constant-type 'byte)) (thrift-protocol-readByte))
+	((equal type (thrift-constant-type 'i16)) (thrift-protocol-readI16))
+	((equal type (thrift-constant-type 'i32)) (thrift-protocol-readI32))
+	((equal type (thrift-constant-type 'i64)) (thrift-protocol-readI64))
+	((equal type (thrift-constant-type 'double)) (thrift-protocol-readDouble))
+	((equal type (thrift-constant-type 'string)) (thrift-protoco`l-readString))))
+
+;; todo: this needs to be integrated in the 'skip' method above...
+;;     elif ttype == TType.STRUCT:
+;;       name = self.readStructBegin()
+;;       while True:
+;;         (name, ttype, id) = self.readFieldBegin()
+;;         if ttype == TType.STOP:
+;;           break
+;;         self.skip(ttype)
+;;         self.readFieldEnd()
+;;       self.readStructEnd()
+;;     elif ttype == TType.MAP:
+;;       (ktype, vtype, size) = self.readMapBegin()
+;;       for i in xrange(size):
+;;         self.skip(ktype)
+;;         self.skip(vtype)
+;;       self.readMapEnd()
+;;     elif ttype == TType.SET:
+;;       (etype, size) = self.readSetBegin()
+;;       for i in xrange(size):
+;;         self.skip(etype)
+;;       self.readSetEnd()
+;;     elif ttype == TType.LIST:
+;;       (etype, size) = self.readListBegin()
+;;       for i in xrange(size):
+;;         self.skip(etype)
+;;       self.readListEnd()
+
 
 (defmethod thrift-protocol-writeMessageBegin ((prot thrift-base-protocol) name type seq)
   (error "This method should be defined in subclasses."))
