@@ -2,6 +2,7 @@
 
 ;; Author: Sylvain Roy <sylvain.roy@m4x.org>
 
+(require 'thrift)
 (require 'thrift-base-protocol)
 (require 'bindat)
 
@@ -47,7 +48,7 @@
   nil)
 
 (defmethod thrift-protocol-writeFieldStop ((prot thrift-binary-protocol))
-  (thrift-protocol-writeByte prot 0)) ; todo: 0 should be replaced by something like TType.STOP
+  (thrift-protocol-writeByte prot (thrift-constant-type-value 'stop)))
 
 (defmethod thrift-protocol-writeMapBegin ((prot thrift-binary-protocol) ktype vtype size)
   (thrift-protocol-writeByte prot ktype)
@@ -126,7 +127,7 @@
       ;; 'strict write' applied
       (progn
 	(setq version2 (thrift-protocol-readByte prot))
-	(if (not (and (equal version1 #x80) ; todo:this should be a VERSION_1 var
+	(if (not (and (equal version1 #x80)
 		      (equal version2 #x01)))
 	    (error "Bad version in readMessageBegin"))
 	(thrift-protocol-readByte prot)             ; useless byte
@@ -162,7 +163,7 @@
 
 (defmethod thrift-protocol-readFieldBegin ((prot thrift-binary-protocol))
   (setq type (thrift-protocol-readByte prot))
-  (if (equal type 0) ; todo: 0 should be replaced by something like TType.STOP
+  (if (equal type (thrift-constant-type-value 'stop))
       (list nil type 0)
     (progn
       (setq id (thrift-protocol-readI16  prot))

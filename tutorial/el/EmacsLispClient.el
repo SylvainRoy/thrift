@@ -20,16 +20,16 @@
 
 ;; Require thrift library modules
 (add-to-list 'load-path "../../lib/el/src")
+(require 'thrift)
 (require 'thrift-socket-transport)
 (require 'thrift-binary-protocol)
-(require 'thrift)
+
 
 ;; Require module generated for this tutorial
 (add-to-list 'load-path "./gen-el/")
 (require 'thrift-module-calculator)
 
 ;; Create a Calculator client using tcp transport and the thrift binary protocol
-; todo: ip/port should be given here
 (setq transport (thrift-socket-transport "MyTransport" :host "localhost" :port 9090))
 (thrift-transport-open transport)
 
@@ -41,8 +41,8 @@
   (message "response received!!!")
   (thrift-transport-close transport))
 
+;; Uncomment the operation you want to use.
 (thrift-client-call client 'ping '() 'handler)
-;; todo: uncomment when ready...
 ;; (thrift-client-call client 'add '(1 1) 'handler)
 ;; (thrift-client-call client 'divide '(1 0) 'handler)
 ;; (thrift-client-call client 'substract '(1 0) 'handler)
