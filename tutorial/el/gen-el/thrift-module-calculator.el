@@ -5,14 +5,10 @@
 ;; options string: blablabla
 
 (require 'thrift)
+(require 'thrift-base-client)
 
-
-(defclass thrift-client-calculator ()
-  ((protocol :initarg :protocol
-	     :document "Protocol to encode/decode and send/recv data.")
-   (seqid    :initform 0
-	     :document "The sequence ID of the client")
-   (functions :initform (list
+(defclass thrift-client-calculator (thrift-base-client)
+  ((functions :initform (list
 			 'ping	     '(thrift-client-calculator-ping-send
 				       thrift-client-calculator-ping-recv)
 			 'add	     '(thrift-client-calculator-add-send
@@ -21,39 +17,9 @@
 				       thrift-client-calculator-substracte-recv)
 			 'divide     '(thrift-client-calculator-divide-send
 				       thrift-client-calculator-divide-recv))
-	      :document "Functions supported by the client."))
+	      :document "Helper functions for the various operations supported by the client."))
   "Generated class for the calculator.")
 
-
-;; todo: this one should be inherited from a parent class...
-(defmethod thrift-client-call ((client thrift-client-calculator) function parameters callback)
-  "Calls a thrift service of the client."
-  (setq handler callback)
-  ;; Build handler to call upon reception of the data of the reply
-  (defun reply-data-handler ()
-    (setq res (thrift-client-recv client))
-    (funcall handler nil res))
-  ;; Register the handler in the transport
-  (oset (oref (oref client protocol) transport)
-	on-data-received
-	'reply-data-handler)
-  ;; Write query to the protocol/transport with ad-hoc function
-  (setq send-fun (car (plist-get (oref client functions) function)))
-  (funcall send-fun client parameters))
-
-
-;; todo: this one should be inherited from a parent class...
-(defmethod thrift-client-recv ((client thrift-client-calculator))
-  "Decode header of incoming reply and call associated decoder."
-  (message "thrift-client-recv called")
-  ;; Decode message header
-  (setq header (thrift-protocol-readMessageBegin (oref client protocol)))
-  (setq name (car header))
-  (setq type (car (cdr header)))
-  (setq seqid (car (cdr (cdr header))))
-  ;; Decode and return reply content with ad-hoc decoder
-  (setq recv-fun (car (cdr (plist-get (oref client functions) (intern name)))))
-  (funcall recv-fun client))
 
 ;;; ping functions ;;;
 
