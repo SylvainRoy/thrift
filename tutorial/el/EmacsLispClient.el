@@ -30,7 +30,7 @@
 
 ;; Create a Calculator client using tcp transport and the thrift binary protocol
 ; todo: ip/port should be given here
-(setq transport (thrift-socket-transport "MyTransport"))
+(setq transport (thrift-socket-transport "MyTransport" :host "localhost" :port 9090))
 (thrift-transport-open transport)
 
 (setq protocol (thrift-binary-protocol "MyProtocol" :transport transport))

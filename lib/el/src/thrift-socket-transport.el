@@ -5,7 +5,11 @@
   ((network-process :initform nil
 		    :document "The underlying network-process object.")
    (recv-buffer :initform ""
-		:document "Buffer to store incoming data."))
+		:document "Buffer to store incoming data.")
+   (host :initarg :host
+	 :document "the host to connect to as a name or an internet address.")
+   (port :initarg :port
+	 :document "the port number to connect to."))
   "TCP tranport implementation.")
 
 
@@ -25,8 +29,8 @@
   (oset trans network-process (make-network-process :name "*thrift*"
 						    :type nil
 						    :server nil
-						    :host "127.0.0.1"
-						    :service 9090
+						    :host (oref trans host)
+						    :service (oref trans port)
 						    :filter 'trans-filter
 						    :sentinel 'trans-sentinel)))
 
