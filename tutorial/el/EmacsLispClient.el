@@ -26,7 +26,7 @@
 
 ;; Require module generated for this tutorial
 (add-to-list 'load-path "./gen-el/")
-(require 'thrift-module-calculator)
+(require 'thrift-client-calculator)
 
 
 ;; Create a Calculator client using tcp transport and the thrift binary protocol

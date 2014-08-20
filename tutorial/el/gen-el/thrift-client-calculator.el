@@ -28,7 +28,7 @@
   "Send ping request."
   (thrift-protocol-writeMessageBegin (oref client protocol)
 				     "ping"
-				     thrift-cst-message-type-call
+				     (thrift-constant-message-type 'call)
 				     (oref client seqid))
   (thrift-protocol-writeStructBegin (oref client protocol) "ping_args")
   (thrift-protocol-writeFieldStop (oref client protocol))
