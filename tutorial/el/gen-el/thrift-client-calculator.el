@@ -22,6 +22,7 @@
   "Generated class for the calculator.")
 
 
+
 ;;; ping functions ;;;
 
 (defmethod thrift-client-calculator-ping-send ((client thrift-client-calculator) parameters)
@@ -54,8 +55,48 @@
   (thrift-protocol-readStructEnd (oref client protocol))
   nil)
 
-;;; addfunctions ;;;
-;todo
+
+
+;;; add functions ;;;
+
+(defmethod thrift-client-calculator-add-send ((client thrift-client-calculator) parameters)
+  "Send add request."
+  (thrift-protocol-writeMessageBegin (oref client protocol)
+				     "add"
+				     (thrift-constant-message-type 'call)
+				     (oref client seqid))
+  (thrift-protocol-writeStructBegin (oref client protocol) "add_args")
+  (thrift-protocol-writeFieldBegin (oref client protocol) "num1" (thrift-constant-type 'i32) 1)
+  (thrift-protocol-writeI32 (oref client protocol) (nth 0 parameters))
+  (thrift-protocol-writeFieldEnd (oref client protocol))
+  (thrift-protocol-writeFieldBegin (oref client protocol) "num2" (thrift-constant-type 'i32) 2)
+  (thrift-protocol-writeI32 (oref client protocol) (nth 1 parameters))
+  (thrift-protocol-writeFieldEnd (oref client protocol))
+  (thrift-protocol-writeFieldStop (oref client protocol))
+  (thrift-protocol-writeStructEnd (oref client protocol))
+  (thrift-protocol-writeMessageEnd (oref client protocol)))
+
+
+(defmethod thrift-client-calculator-add-recv ((client thrift-client-calculator))
+  "Decode content of add response."
+  (thrift-protocol-readStructBegin (oref client protocol))
+  (catch 'break
+    (while t
+      (setq r (thrift-protocol-readFieldBegin (oref client protocol)))
+      (setq fname (pop r))
+      (setq ftype (pop r))
+      (setq fid (pop r))
+      (if (equal ftype (thrift-constant-type 'stop))
+	  (throw 'break t))
+      (if (equal fid 0)
+	  (if (equal ftype (thrift-constant-type 'i32))
+	      (setq result (thrift-protocol-readI32 (oref client protocol)))
+	    (thrift-protocol-skip (oref client protocol)))
+	(thrift-protocol-skip (oref client protocol)))
+      (thrift-protocol-readFieldEnd (oref client protocol))))
+  (thrift-protocol-readStructEnd (oref client protocol))
+  (list result))
+
 
 ;;; substract functions ;;;
 ;todo

@@ -29,7 +29,6 @@
 
 (defmethod thrift-client-recv ((client thrift-base-client))
   "Decode the header of an incoming reply and call the associated decoder."
-  (message "thrift-client-recv called")
   ;; Decode message header
   (setq header (thrift-protocol-readMessageBegin (oref client protocol)))
   (setq name (car header))

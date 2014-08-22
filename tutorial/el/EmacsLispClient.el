@@ -40,11 +40,14 @@
 
 (defun handler (err response)
   "Function to handle the response from the thrift library."
-  (message "response received!!!")
+  (setq result "-")
+  (if (equal 1 (length response))
+      (setq result (int-to-string (car response))))
+  (message (concat "response received: " result))
   (thrift-transport-close transport))
 
 ;; Uncomment the operation you want to use.
-(thrift-client-call client 'ping '() 'handler)
-;; (thrift-client-call client 'add '(1 1) 'handler)
+;;(thrift-client-call client 'ping '() 'handler)
+ (thrift-client-call client 'add '(17 12) 'handler)
 ;; (thrift-client-call client 'divide '(1 0) 'handler)
 ;; (thrift-client-call client 'substract '(1 0) 'handler)
