@@ -49,7 +49,7 @@
     (if (equal ftype 0)
 	(setq test nil)
       (progn
-	(thrift-protocol-skip (oref client protocol) ftype) ; todo: I haven't implemented this method yet...
+	(thrift-protocol-skip (oref client protocol) ftype)
 	(thrift-protocol-readFieldEnd (oref client protocol))
 	)))
   (thrift-protocol-readStructEnd (oref client protocol))

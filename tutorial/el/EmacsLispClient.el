@@ -47,7 +47,7 @@
   (thrift-transport-close transport))
 
 ;; Uncomment the operation you want to use.
-;;(thrift-client-call client 'ping '() 'handler)
- (thrift-client-call client 'add '(17 12) 'handler)
-;; (thrift-client-call client 'divide '(1 0) 'handler)
-;; (thrift-client-call client 'substract '(1 0) 'handler)
+;(thrift-client-call client 'ping '() 'handler)
+(thrift-client-call client 'add '(17 12) 'handler)
+; (thrift-client-call client 'divide '(1 0) 'handler)
+; (thrift-client-call client 'substract '(1 0) 'handler)
