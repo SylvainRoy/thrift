@@ -2,15 +2,18 @@
 
 from twisted.internet import reactor, protocol
 
-reply = "toto"
+reply = ""
+totalrecv = ""
 
 class Echo(protocol.Protocol):
     """This is just about the simplest possible protocol"""
 
     def dataReceived(self, data):
         "As soon as any data is received, write it back."
+        global totalrecv
         print "rcvd: %s" % repr(data)
         print "sent: %s" % repr(reply)
+        totalrecv += repr(data)[1:-1]
         self.transport.write(reply)
 
 
@@ -24,3 +27,4 @@ def main():
 # this only runs if the module was *not* imported
 if __name__ == '__main__':
     main()
+    print "\n", totalrecv

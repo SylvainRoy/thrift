@@ -14,9 +14,14 @@
 (require 'thrift-string-transport)
 (require 'thrift-binary-protocol)
 
+
 ;; Init transport and protocol
 (setq transport (thrift-string-transport "TestTrans"))
 (setq protocol (thrift-binary-protocol "TestProt" :transport transport))
+
+
+
+;;; Testing of the 'string' transport ;;;
 
 (ert-deftest thrift-string-transport-test ()
   "Tests the string-transport transport."
@@ -36,6 +41,49 @@
   (should (equal (get-sent-and-reset transport) "0123456789"))
   (should (equal (get-sent transport) ""))
   (should (equal (get-sent-and-reset transport) "")))
+
+
+
+;;; Testing of the 'base' protocol ;;;
+
+(ert-deftest thrift-protocol-skip-test ()
+  "Tests the 'skip' method defined in thrift-base-protocol."
+  ;; skip a struct with a byte only
+  (set-recv transport "\x03\x00\x00\x00\x00")
+  (thrift-protocol-skip protocol (thrift-constant-type 'struct))
+  (should (equal (oref transport recv) ""))
+  ;; skip a struct with a byte and an i16
+  (set-recv transport "\x03\x00\x00\x00\x06\x00\x01\x00\x01\x00")
+  (thrift-protocol-skip protocol (thrift-constant-type 'struct))
+  (should (equal (oref transport recv) ""))
+  ;; skip a struct with: bool, byte, i16, i32, i64 and a string.
+  (set-recv transport "\x02\x00\x00\x01\x03\x00\x00\x00\x06\x00\x00\x00\x01\x08\x00\x00\x00\x00\x00\x00\n\x00\x00\x00\x00\x00\x00\x00\x00\x00\x00\x0b\x00\x00\x00\x00\x00\x06string\x00")
+  (thrift-protocol-skip protocol (thrift-constant-type 'struct))
+  (should (equal (oref transport recv) ""))
+  ;; skip a struct of a map(i16->i32) with two elements
+  (set-recv transport (concat "\r" "\x00\x00\x06\x08\x00\x00\x00\x02\x00\x01\x00\x00\x00" "@" "\x00\x02\x00\x00\x00" "*" "\x00"))
+  (thrift-protocol-skip protocol (thrift-constant-type 'struct))
+  (should (equal (oref transport recv) ""))
+  ;; skip a map(i16->i32) with two elements
+  (set-recv transport "\x06\x08\x00\x00\x00\x02\x00\x01\x00\x00\x00@\x00\x02\x00\x00\x00*")
+  (thrift-protocol-skip protocol (thrift-constant-type 'map))
+  (should (equal (oref transport recv) ""))
+  ;; skip a map(string->i32) with two elements
+  (set-recv transport "\x0b\x08\x00\x00\x00\x02\x00\x00\x00\x04key1\x00\x00\x04\xd2\x00\x00\x00\x04key2\x00\x00\x16.")
+  (thrift-protocol-skip protocol (thrift-constant-type 'map))
+  (should (equal (oref transport recv) ""))
+  ;; skip a list of i32 of 3 elements
+  (set-recv transport "\x08\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02")
+  (thrift-protocol-skip protocol (thrift-constant-type 'list))
+  (should (equal (oref transport recv) ""))
+  ;; skip a set of i32 of 3 elements
+  (set-recv transport "\x08\x00\x00\x00\x03\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x02")
+  (thrift-protocol-skip protocol (thrift-constant-type 'set))
+  (should (equal (oref transport recv) "")))
+
+
+
+;;; Testing of the 'binary' protocol ;;;
 
 (ert-deftest thrift-binary-protocol-writeMessageBegin-test ()
   "Tests the encoding of 'writeMessageBegin' using the thrift-binary-protocol."

@@ -136,7 +136,6 @@
 	(setq seqid (thrift-protocol-readI32 prot)))
     ;; 'strict write' not applied
     (progn
-      (message "readMessageBegin")
       (if (oref prot strictRead)
 	  (error "No protocol header found while 'strict read' asked"))
       ;; Decode length of name
@@ -171,6 +170,9 @@
 
 (defmethod thrift-protocol-readFieldEnd ((prot thrift-binary-protocol))
   nil)
+
+(defmethod thrift-protocol-readFieldStop ((prot thrift-binary-protocol))
+  (thrift-protocol-writeByte (thrift-constant-type 'stop)))
 
 (defmethod thrift-protocol-readMapBegin ((prot thrift-binary-protocol))
   (setq ktype (thrift-protocol-readByte prot))

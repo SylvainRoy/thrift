@@ -8,41 +8,47 @@
 
 (defmethod thrift-protocol-skip ((prot thrift-base-protocol) type)
   (cond ((equal type (thrift-constant-type 'stop)) nil)
-	((equal type (thrift-constant-type 'bool)) (thrift-protocol-readBool))
-	((equal type (thrift-constant-type 'byte)) (thrift-protocol-readByte))
-	((equal type (thrift-constant-type 'i16)) (thrift-protocol-readI16))
-	((equal type (thrift-constant-type 'i32)) (thrift-protocol-readI32))
-	((equal type (thrift-constant-type 'i64)) (thrift-protocol-readI64))
-	((equal type (thrift-constant-type 'double)) (thrift-protocol-readDouble))
-	((equal type (thrift-constant-type 'string)) (thrift-protoco`l-readString))))
-
-;; todo: this needs to be integrated in the 'skip' method above...
-;;     elif ttype == TType.STRUCT:
-;;       name = self.readStructBegin()
-;;       while True:
-;;         (name, ttype, id) = self.readFieldBegin()
-;;         if ttype == TType.STOP:
-;;           break
-;;         self.skip(ttype)
-;;         self.readFieldEnd()
-;;       self.readStructEnd()
-;;     elif ttype == TType.MAP:
-;;       (ktype, vtype, size) = self.readMapBegin()
-;;       for i in xrange(size):
-;;         self.skip(ktype)
-;;         self.skip(vtype)
-;;       self.readMapEnd()
-;;     elif ttype == TType.SET:
-;;       (etype, size) = self.readSetBegin()
-;;       for i in xrange(size):
-;;         self.skip(etype)
-;;       self.readSetEnd()
-;;     elif ttype == TType.LIST:
-;;       (etype, size) = self.readListBegin()
-;;       for i in xrange(size):
-;;         self.skip(etype)
-;;       self.readListEnd()
-
+	((equal type (thrift-constant-type 'bool)) (thrift-protocol-readBool prot))
+	((equal type (thrift-constant-type 'byte)) (thrift-protocol-readByte prot))
+	((equal type (thrift-constant-type 'i16)) (thrift-protocol-readI16 prot))
+	((equal type (thrift-constant-type 'i32)) (thrift-protocol-readI32 prot))
+	((equal type (thrift-constant-type 'i64)) (thrift-protocol-readI64 prot))
+	((equal type (thrift-constant-type 'double)) (thrift-protocol-readDouble prot))
+	((equal type (thrift-constant-type 'string)) (thrift-protocol-readString prot))
+	((equal type (thrift-constant-type 'struct))
+	 (progn
+	   (thrift-protocol-readStructBegin prot)
+	   (while (not (equal (setq ttype (car (cdr (thrift-protocol-readFieldBegin prot))))
+			      (thrift-constant-type 'stop)))
+	     (thrift-protocol-skip prot ttype)
+	     (thrift-protocol-readFieldEnd prot))
+	   (thrift-protocol-readStructEnd prot)))
+	((equal type (thrift-constant-type 'map))
+	 (progn
+	   (setq r (thrift-protocol-readMapBegin prot))
+	   (setq ktype (pop r))
+	   (setq vtype (pop r))
+	   (setq size (pop r))
+	   (dotimes (index size nil)
+	     (thrift-protocol-skip prot ktype)
+	     (thrift-protocol-skip prot vtype))
+	   (thrift-protocol-readMapEnd prot)))
+	((equal type (thrift-constant-type 'set))
+	 (progn
+	   (setq r (thrift-protocol-readSetBegin prot))
+	   (setq etype (pop r))
+	   (setq size (pop r))
+	   (dotimes (index size nil)
+	     (thrift-protocol-skip prot etype))
+	   (thrift-protocol-readSetEnd prot)))
+	((equal type (thrift-constant-type 'list))
+	 (progn
+	   (setq r (thrift-protocol-readListBegin prot))
+	   (setq etype (pop r))
+	   (setq size (pop r))
+	   (dotimes (index size nil)
+	     (thrift-protocol-skip prot etype))
+	   (thrift-protocol-readListEnd prot)))))
 
 (defmethod thrift-protocol-writeMessageBegin ((prot thrift-base-protocol) name type seq)
   (error "This method should be defined in subclasses."))
