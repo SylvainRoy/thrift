@@ -1,0 +1,29 @@
+Here are todo to finalise the implementation:
+
+1- The binary protocol should support doubles
+=============================================
+Not that simple. Emacs does not support double.
+So floats are to be used. The problem is that they still need to be encoded/decoded as doubles.
+The node.js implementation can be copied...
+
+2- Partial reception of the reply should be handled nicely
+==========================================================
+In the current state, it makes the whole decoding to crash.
+Interestengly, it seems to be the same in the python/twisted implementation.
+This could easily be done by having the protocol not flushing decoded data during decoding.
+Then, the data would be fluched only by a readMessageEnd. This would guarantee that the decoding restart from scratch once further data are received. Somehow inefficient, but very simple.
+
+3- Be a little clearer on the max size supported for int
+========================================================
+Emacs is limited to 30 bits, but this implementation of thrift is limited to 24 or 30 bits depending on the function. Should either be optimized to 30 or clearly stated that the limit is 24.
+
+4- Find and remove all 'todo' from code
+=======================================
+
+5- the directory tutorial/el/gen-el should be automatically generated
+=====================================================================
+For the time being, I did it manually...
+
+6- the transport must have the method flush and only sent when it is called
+===========================================================================
+Otherwise, the network usage is damn innefficient...

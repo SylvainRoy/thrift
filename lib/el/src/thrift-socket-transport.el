@@ -21,9 +21,8 @@
     ;; Stored data received in buffer
     (oset transport recv-buffer
 	  (concat (oref transport recv-buffer) data))
-    ;; calls client handler
-    (funcall (oref transport on-data-received))
-    )
+    ;; notifies client of data reception
+    (thrift-client-reply-handler (oref trans client)))
   (defun trans-sentinel (process event)
     (message (concat "transport event: " event)))
   (oset trans network-process (make-network-process :name "*thrift*"

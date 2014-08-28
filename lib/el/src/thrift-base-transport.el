@@ -1,8 +1,8 @@
 (require 'eieio)
 
 (defclass thrift-base-transport ()
-  ((on-data-received :initform ()
-		     :document "The function called upon reception of data."))
+  ((client :initform nil
+	   :document "The client associated to this transport."))
   "A 'virtual' class for thrift transports.")
 
 

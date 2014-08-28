@@ -33,21 +33,40 @@
 (setq transport (thrift-socket-transport "MyTransport"
 					 :host "localhost"
 					 :port 9090))
-(thrift-transport-open transport)
-
 (setq protocol (thrift-binary-protocol "MyProtocol" :transport transport))
 (setq client (thrift-client-calculator "MyCalculator" :protocol protocol))
 
-(defun handler (err response)
-  "Function to handle the response from the thrift library."
-  (setq result "-")
-  (if (equal 1 (length response))
-      (setq result (int-to-string (car response))))
-  (message (concat "response received: " result))
-  (thrift-transport-close transport))
+(thrift-transport-open transport)
 
-;; Uncomment the operation you want to use.
-;(thrift-client-call client 'ping '() 'handler)
-(thrift-client-call client 'add '(17 12) 'handler)
-; (thrift-client-call client 'divide '(1 0) 'handler)
-; (thrift-client-call client 'substract '(1 0) 'handler)
+(thrift-client-call client
+		    'ping
+		    '()
+		    (lambda (err response)
+		      (message "ping()")))
+
+(thrift-client-call client
+		    'add
+		    '(34 21)
+		    (lambda (err response)
+		      (message "add(1)")))
+
+(thrift-client-call client
+		    'add
+		    '(34 21)
+		    (lambda (err response)
+		      (message "add()")
+		      (thrift-transport-close transport)))
+
+;; (defun handler (err response)
+;;   "Function to handle the response from the thrift library."
+;;   (setq result "-")
+;;   (if (equal 1 (length response))
+;;       (setq result (int-to-string (car response))))
+;;   (message (concat "response received: " result))
+;;   (thrift-transport-close transport))
+
+ ;; Uncomment the operation you want to use.
+;;(thrift-client-call client 'ping '() 'handler)
+;; (thrift-client-call client 'add '(17 12) 'handler)
+;; ; (thrift-client-call client 'divide '(1 0) 'handler)
+;; ; (thrift-client-call client 'substract '(1 0) 'handler)
