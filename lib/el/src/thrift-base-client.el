@@ -40,7 +40,6 @@
       ;; retrieve callback and fire it
       (setq callback (plist-get (oref client callbacks) seqid))
       (funcall callback nil result)
-      (message "one message decoded")
       ;; Flush the data successfuly read from recv buffer
       (thrift-transport-confirm-reads (oref (oref client protocol) transport))))
   ;; cancel reads that could not complete if any

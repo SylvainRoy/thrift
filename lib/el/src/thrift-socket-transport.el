@@ -28,7 +28,7 @@
     ;; notifies client that received data are available
     (thrift-client-reply-handler (oref trans client)))
   (defun trans-sentinel (process event)
-    (message (concat "transport event: " event)))
+    (message (concat "transport event: " (substring event 0 -1))))
   (oset trans network-process (make-network-process :name "*thrift*"
 						    :type nil
 						    :server nil

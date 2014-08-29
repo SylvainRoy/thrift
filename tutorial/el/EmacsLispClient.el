@@ -42,28 +42,23 @@
 		    'ping
 		    '()
 		    (lambda (err response)
-		      (message "ping()")))
+		      (message "==> ping()")))
 
 (thrift-client-call client
 		    'add
 		    '(34 21)
 		    (lambda (err response)
-		      (message "add(1)")))
+		      (message (concat "==> add(34, 21) = "
+				       (int-to-string (car response))))))
 
 (thrift-client-call client
 		    'add
-		    '(34 21)
+		    '(1 2)
 		    (lambda (err response)
-		      (message "add()")
+		      (message (concat "==> add(1, 2) = "
+				       (int-to-string (car response))))
 		      (thrift-transport-close transport)))
 
-;; (defun handler (err response)
-;;   "Function to handle the response from the thrift library."
-;;   (setq result "-")
-;;   (if (equal 1 (length response))
-;;       (setq result (int-to-string (car response))))
-;;   (message (concat "response received: " result))
-;;   (thrift-transport-close transport))
 
  ;; Uncomment the operation you want to use.
 ;;(thrift-client-call client 'ping '() 'handler)
