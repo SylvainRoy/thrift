@@ -17,7 +17,7 @@
   "Open the transport."
   (setq transport trans)
   (defun trans-filter (process data)
-    ;(message (concat "Raw reply received: '" data "'"))
+    (message (concat "Raw reply received: '" data "'"))
     ;; Stored data received in buffer
     (oset transport recv-buffer
 	  (concat (oref transport recv-buffer) data))
