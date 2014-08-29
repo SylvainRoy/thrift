@@ -12,23 +12,23 @@
 
 (defclass thrift-binary-protocol (thrift-base-protocol)
   ((strictRead :initarg :strictRead
-               :initform nil)
+	       :initform nil)
    (strictWrite :initarg :strictWrite
-                :initform t))
+		:initform t))
   "Implementation of the Thrift binary protocol.")
 
 
 (defmethod thrift-protocol-writeMessageBegin ((prot thrift-binary-protocol) name type seq)
   (message (concat "writemessage : " name
-                   ", type: " (int-to-string type)
-                   ", seqid: " (int-to-string seq)))
+		   ", type: " (int-to-string type)
+		   ", seqid: " (int-to-string seq)))
   (if (oref prot strictWrite)
       (progn
-        (thrift-protocol-writeI16 prot thrift-binary-protocol-version-1)
-        (thrift-protocol-writeByte prot 0)
-        (thrift-protocol-writeByte prot type)
-        (thrift-protocol-writeString prot name)
-        (thrift-protocol-writeI32 prot seq))
+	(thrift-protocol-writeI16 prot thrift-binary-protocol-version-1)
+	(thrift-protocol-writeByte prot 0)
+	(thrift-protocol-writeByte prot type)
+	(thrift-protocol-writeString prot name)
+	(thrift-protocol-writeI32 prot seq))
     (progn
       (thrift-protocol-writeString prot name)
       (thrift-protocol-writeByte prot type)
@@ -80,69 +80,67 @@
 
 (defmethod thrift-protocol-writeByte ((prot thrift-binary-protocol) byte)
   (thrift-transport-write (oref prot transport)
-                          (bindat-pack '((data u8))
-                                       `((data . ,byte)))))
+			  (bindat-pack '((data u8))
+				       `((data . ,byte)))))
 
 (defmethod thrift-protocol-writeI16 ((prot thrift-binary-protocol) i16)
   (thrift-transport-write (oref prot transport)
-                          (bindat-pack '((data u16))
-                                       `((data . ,i16)))))
+			  (bindat-pack '((data u16))
+				       `((data . ,i16)))))
 
 (defmethod thrift-protocol-writeI32 ((prot thrift-binary-protocol) i32)
   ;; Emacs does not cope with integer on 32bits.
   ;; This function only works for signed number that can be encoded on 24bits.
   (let ((of (if (>= i32 0) 0 #xff)))
     (thrift-transport-write (oref prot transport)
-                            (bindat-pack '((overflow u8)
-                                           (data     u24))
-                                         `((overflow . ,of)
-                                           (data     . ,i32))))))
+			    (bindat-pack '((overflow u8)
+					   (data     u24))
+					 `((overflow . ,of)
+					   (data     . ,i32))))))
 
 (defmethod thrift-protocol-writeI64 ((prot thrift-binary-protocol) i64)
   ;; Emacs is limited to integer on 30 bits. So, this function only
   ;; consider the 24 first bits
   ;; todo: improve that to go to 30bits.
   (let ((of1 (if (>= i64 0) 0 #xffffff))
-        (of2 (if (>= i64 0) 0 #xffff)))
+	(of2 (if (>= i64 0) 0 #xffff)))
     (thrift-transport-write (oref prot transport)
-                            (bindat-pack '((overflow1   u24)
-                                           (overflow2   u16)
-                                           (data        u24))
-                                         `((overflow1 . ,of1)
-                                           (overflow2 . ,of2)
-                                           (data      . ,i64))))))
+			    (bindat-pack '((overflow1   u24)
+					   (overflow2   u16)
+					   (data        u24))
+					 `((overflow1 . ,of1)
+					   (overflow2 . ,of2)
+					   (data      . ,i64))))))
 
 (defmethod thrift-protocol-writeDouble ((prot thrift-binary-protocol) double)
   (error "todo (see javascript implementation in nodejs/../../binary.js implem...)"))
 
 (defmethod thrift-protocol-writeString ((prot thrift-binary-protocol) string)
   (thrift-transport-write (oref prot transport)
-                          (bindat-pack '((len1     u8)
-                                         (len2     u24)
-                                         (data     str (len2)))
-                                       `((len1   . 0)
-                                         (len2   . ,(length string))
-                                         (data   . ,string)))))
+			  (bindat-pack '((len1     u8)
+					 (len2     u24)
+					 (data     str (len2)))
+				       `((len1   . 0)
+					 (len2   . ,(length string))
+					 (data   . ,string)))))
 
 (defmethod thrift-protocol-readMessageBegin ((prot thrift-binary-protocol))
   (setq version1 (thrift-protocol-readByte prot))
   (if (not (equal 0 (logand version1 #x80)))
       ;; 'strict write' applied
       (progn
-        (setq version2 (thrift-protocol-readByte prot))
-        (if (not (and (equal version1 #x80)
-                      (equal version2 #x01)))
-            (error "Bad version in readMessageBegin"))
-        (thrift-protocol-readByte prot)             ; useless byte
-        (setq type (thrift-protocol-readByte prot))
-        (setq name (thrift-protocol-readString prot))
-        (setq seqid (thrift-protocol-readI32 prot))
-        (message (concat "seqid in readmessage1: "
-                         (int-to-string seqid))))
+	(setq version2 (thrift-protocol-readByte prot))
+	(if (not (and (equal version1 #x80)
+		      (equal version2 #x01)))
+	    (error "Bad version in readMessageBegin"))
+	(thrift-protocol-readByte prot)             ; useless byte
+	(setq type (thrift-protocol-readByte prot))
+	(setq name (thrift-protocol-readString prot))
+	(setq seqid (thrift-protocol-readI32 prot)))
     ;; 'strict write' not applied
     (progn
       (if (oref prot strictRead)
-          (error "No protocol header found while 'strict read' asked"))
+	  (error "No protocol header found while 'strict read' asked"))
       ;; Decode length of name
       (setq data (thrift-transport-read (oref prot transport) 3))
       (setq decoded (bindat-unpack '((d u24)) data))
@@ -153,9 +151,7 @@
       (setq name (bindat-get-field decoded 'd))
       ;; Decode type & seqid
       (setq type (thrift-protocol-readByte prot))
-      (setq seqid (thrift-protocol-readI32 prot))
-      (message (concat "seqid in readmessage2: "
-                       (int-to-string seqid)))))
+      (setq seqid (thrift-protocol-readI32 prot))))
   (list name type seqid))
 
 (defmethod thrift-protocol-readMessageEnd ((prot thrift-binary-protocol))

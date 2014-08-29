@@ -18,11 +18,13 @@
   (setq transport trans)
   (defun trans-filter (process data)
     (message (concat "Raw reply received: '" data "'"))
-    ;; Stored data received in buffer
+    ;; Stores received data in buffer
     (oset transport recv-buffer
 	  (concat (oref transport recv-buffer) data))
-    ;; notifies client of data reception
-    (thrift-client-reply-handler (oref trans client)))
+    ;; notifies client that received data are available
+    (catch 'done-decoding
+      (while t
+	(thrift-client-reply-handler (oref trans client)))))
   (defun trans-sentinel (process event)
     (message (concat "transport event: " event)))
   (oset trans network-process (make-network-process :name "*thrift*"
