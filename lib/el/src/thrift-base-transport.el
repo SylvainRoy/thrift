@@ -26,4 +26,13 @@
   "Flush the transport."
   (error "The method 'flush' should be defined in subclasses."))
 
+(defmethod thrift-transport-cancel-reads ((trans thrift-base-transport))
+  "Cancel the reads done since last read confirmation."
+  (error "The method 'cancel-reads' should be defined in subclasses."))
+
+(defmethod thrift-transport-confirm-reads ((trans thrift-base-transport))
+  "Cancel the reads done since last read confirmation."
+  (error "The method 'confirm-reads' should be defined in subclasses."))
+
+
 (provide 'thrift-base-transport)

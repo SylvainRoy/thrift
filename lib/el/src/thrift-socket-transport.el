@@ -6,6 +6,8 @@
 		    :document "The underlying network-process object.")
    (recv-buffer :initform ""
 		:document "Buffer to store incoming data.")
+   (recv-cursor :initform 0
+		:document "The position of the cursor in the recv buffer.")
    (host :initarg :host
 	 :document "the host to connect to as a name or an internet address.")
    (port :initarg :port
@@ -22,9 +24,7 @@
     (oset transport recv-buffer
 	  (concat (oref transport recv-buffer) data))
     ;; notifies client that received data are available
-    (catch 'done-decoding
-      (while t
-	(thrift-client-reply-handler (oref trans client)))))
+    (thrift-client-reply-handler (oref trans client)))
   (defun trans-sentinel (process event)
     (message (concat "transport event: " event)))
   (oset trans network-process (make-network-process :name "*thrift*"
@@ -40,11 +40,13 @@
   (delete-process (oref trans network-process)))
 
 (defmethod thrift-transport-read ((trans thrift-base-transport) size)
-  "Receive data."
-  (setq data (oref trans recv-buffer))
-  (setq toread (min size (length data)))
-  (setq out (substring data 0 toread))
-  (oset trans recv-buffer (substring data toread (length data)))
+  "Read data."
+  (setq buffer (oref trans recv-buffer))
+  (setq cursor (oref trans recv-cursor))
+  (if (< (- (length buffer) cursor) size)
+      (throw 'not-enough-data t))
+  (setq out (substring buffer cursor (+ cursor size)))
+  (oset trans recv-cursor (+ cursor size))
   (string-to-unibyte out))
 
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)
@@ -54,6 +56,18 @@
 
 (defmethod thrift-transport-flush ((trans thrift-base-transport))
   "Flush the transport.")
+
+(defmethod thrift-transport-cancel-reads ((trans thrift-base-transport))
+  "Cancel the reads done since last read confirmation."
+  (oset trans recv-cursor 0))
+
+(defmethod thrift-transport-confirm-reads ((trans thrift-base-transport))
+  "Cancel the reads done since last read confirmation."
+  ;; Flush read data
+  (oset trans recv-buffer (substring (oref trans recv-buffer)
+				     (oref trans recv-cursor)
+				     (length (oref trans recv-buffer))))
+  (oset trans recv-cursor 0))
 
 
 (provide 'thrift-socket-transport)

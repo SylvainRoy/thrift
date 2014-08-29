@@ -31,14 +31,20 @@
 (defmethod thrift-client-reply-handler ((client thrift-base-client))
   "Callbacks to call upon reception of data by the tranport layer."
   (message "reply handler")
-  ;; Recv and decode reply
-  (setq res (thrift-client-recv client))
-  (setq seqid (car res))
-  (setq result (car (cdr res)))
-  ;; retrieve callback and fire it
-  (setq callback (plist-get (oref client callbacks) seqid))
-  (funcall callback nil result)
-  (throw 'done-decoding t))
+  (catch 'not-enough-data
+    (while t
+      ;; Recv and decode reply
+      (setq res (thrift-client-recv client))
+      (setq seqid (car res))
+      (setq result (car (cdr res)))
+      ;; retrieve callback and fire it
+      (setq callback (plist-get (oref client callbacks) seqid))
+      (funcall callback nil result)
+      (message "one message decoded")
+      ;; Flush the data successfuly read from recv buffer
+      (thrift-transport-confirm-reads (oref (oref client protocol) transport))))
+  ;; cancel reads that could not complete if any
+  (thrift-transport-cancel-reads (oref (oref client protocol) transport)))
 
 
 (defmethod thrift-client-call ((client thrift-base-client) function parameters callback)
