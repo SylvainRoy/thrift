@@ -7,7 +7,9 @@
    (recv-buffer :initform ""
 		:document "Buffer to store incoming data.")
    (recv-cursor :initform 0
-		:document "The position of the cursor in the recv buffer.")
+		:document "The position of the read cursor in the recv buffer.")
+   (send-buffer :initform ""
+		:document "Buffer to store outgoing data.")
    (host :initarg :host
 	 :document "the host to connect to as a name or an internet address.")
    (port :initarg :port
@@ -51,11 +53,16 @@
 
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)
   "Write data."
-  (process-send-string (oref trans network-process) data)
-  )
+  (oset trans send-buffer
+	(concat (oref trans send-buffer)
+		data)))
 
 (defmethod thrift-transport-flush ((trans thrift-base-transport))
-  "Flush the transport.")
+  "Flush the transport."
+  (message "flush")
+  (process-send-string (oref trans network-process)
+		       (oref trans send-buffer))
+  (oset trans send-buffer ""))
 
 (defmethod thrift-transport-cancel-reads ((trans thrift-base-transport))
   "Cancel the reads done since last read confirmation."

@@ -58,7 +58,8 @@
   ;; Retrieve ad-hoc function to encode/send the query
   (setq send-fun (car (plist-get (oref client functions) function)))
   ;; send query
-  (funcall send-fun client seqid parameters))
+  (funcall send-fun client seqid parameters)
+  (thrift-transport-flush (oref (oref client protocol) transport)))
 
 
 (defmethod thrift-client-recv ((client thrift-base-client))
