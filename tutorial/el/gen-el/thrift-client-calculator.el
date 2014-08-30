@@ -2,7 +2,7 @@
 
 ;; Do not edit unless you are sure that you know what you are doing
 
-;; options string: blablabla
+;; options string:
 
 (require 'thrift)
 (require 'thrift-base-client)
@@ -10,27 +10,26 @@
 
 (defclass thrift-client-calculator (thrift-base-client)
   ((functions :initform (list
-                         'ping       '(thrift-client-calculator-ping-send
-                                       thrift-client-calculator-ping-recv)
-                         'add        '(thrift-client-calculator-add-send
-                                       thrift-client-calculator-add-recv)
-                         'substracte '(thrift-client-calculator-substracte-send
-                                       thrift-client-calculator-substracte-recv)
-                         'divide     '(thrift-client-calculator-divide-send
-                                       thrift-client-calculator-divide-recv))
-              :document "Helper functions for the various operations supported by the client."))
+			 'ping       '(thrift-client-calculator-ping-send
+				       thrift-client-calculator-ping-recv)
+			 'add        '(thrift-client-calculator-add-send
+				       thrift-client-calculator-add-recv)
+			 'calculate  '(thrift-client-calculator-calculate-send
+				       thrift-client-calculator-calculate-recv))
+	      :document "Helper functions for the various operations supported by the client."))
   "Generated class for the calculator.")
 
 
 
 ;;; ping functions ;;;
 
+
 (defmethod thrift-client-calculator-ping-send ((client thrift-client-calculator) seqid parameters)
   "Send ping request."
   (thrift-protocol-writeMessageBegin (oref client protocol)
-                                     "ping"
-                                     (thrift-constant-message-type 'call)
-                                     seqid)
+				     "ping"
+				     (thrift-constant-message-type 'call)
+				     seqid)
   (thrift-protocol-writeStructBegin (oref client protocol) "ping_args")
   (thrift-protocol-writeFieldStop (oref client protocol))
   (thrift-protocol-writeStructEnd (oref client protocol))
@@ -47,11 +46,11 @@
     (setq ftype (car (cdr res)))
     (setq fid (car (cdr (cdr res))))
     (if (equal ftype 0)
-        (setq test nil)
+	(setq test nil)
       (progn
-        (thrift-protocol-skip (oref client protocol) ftype)
-        (thrift-protocol-readFieldEnd (oref client protocol))
-        )))
+	(thrift-protocol-skip (oref client protocol) ftype)
+	(thrift-protocol-readFieldEnd (oref client protocol))
+	)))
   (thrift-protocol-readStructEnd (oref client protocol))
   nil)
 
@@ -59,18 +58,19 @@
 
 ;;; add functions ;;;
 
+
 (defmethod thrift-client-calculator-add-send ((client thrift-client-calculator) seqid parameters)
   "Send add request."
   (thrift-protocol-writeMessageBegin (oref client protocol)
-                                     "add"
-                                     (thrift-constant-message-type 'call)
-                                     seqid)
+				     "add"
+				     (thrift-constant-message-type 'call)
+				     seqid)
   (thrift-protocol-writeStructBegin (oref client protocol) "add_args")
   (thrift-protocol-writeFieldBegin (oref client protocol) "num1" (thrift-constant-type 'i32) 1)
-  (thrift-protocol-writeI32 (oref client protocol) (nth 0 parameters))
+  (thrift-protocol-writeI32 (oref client protocol) (nth 0 parameters)) ; num1
   (thrift-protocol-writeFieldEnd (oref client protocol))
   (thrift-protocol-writeFieldBegin (oref client protocol) "num2" (thrift-constant-type 'i32) 2)
-  (thrift-protocol-writeI32 (oref client protocol) (nth 1 parameters))
+  (thrift-protocol-writeI32 (oref client protocol) (nth 1 parameters)) ; num2
   (thrift-protocol-writeFieldEnd (oref client protocol))
   (thrift-protocol-writeFieldStop (oref client protocol))
   (thrift-protocol-writeStructEnd (oref client protocol))
@@ -87,21 +87,122 @@
       (setq ftype (pop r))
       (setq fid (pop r))
       (if (equal ftype (thrift-constant-type 'stop))
-          (throw 'break t))
+	  (throw 'break t))
       (if (equal fid 0)
-          (if (equal ftype (thrift-constant-type 'i32))
-              (setq result (thrift-protocol-readI32 (oref client protocol)))
-            (thrift-protocol-skip (oref client protocol)))
-        (thrift-protocol-skip (oref client protocol)))
+	  (if (equal ftype (thrift-constant-type 'i32))
+	      (setq result (thrift-protocol-readI32 (oref client protocol)))
+	    (thrift-protocol-skip (oref client protocol) ftype))
+	(thrift-protocol-skip (oref client protocol) ftype))
       (thrift-protocol-readFieldEnd (oref client protocol))))
   (thrift-protocol-readStructEnd (oref client protocol))
   (list result))
 
 
-;;; substract functions ;;;
-;todo
 
-;;; divide functions ;;;
-;todo
+;;; calculate functions ;;;
+
+
+(defmethod thrift-client-calculator-calculate-send ((client thrift-client-calculator) seqid parameters)
+  "Send calculate request."
+  (setq protocol (oref client protocol))
+  (thrift-protocol-writeMessageBegin protocol
+				     "calculate"
+				     (thrift-constant-message-type 'call)
+				     seqid)
+  (thrift-protocol-writeStructBegin protocol "calculate_args")
+  ;; parameter: logid
+  (when (nth 0 parameters)
+    (thrift-protocol-writeFieldBegin protocol
+				     "logid"
+				     (thrift-constant-type 'i32)
+				     1)
+    (thrift-protocol-writeI32 protocol (nth 0 parameters))
+    (thrift-protocol-writeFieldEnd protocol))
+  ;; parameter: w
+  (when (nth 1 parameters)
+    (thrift-protocol-writeFieldBegin protocol
+				     "w"
+				     (thrift-constant-type 'struct)
+				     2)
+    (thrift-client-calculator-write-Work client (nth 1 parameters))
+    (thrift-protocol-writeFieldEnd protocol))
+  (thrift-protocol-writeFieldStop protocol)
+  (thrift-protocol-writeStructEnd protocol)
+  (thrift-protocol-writeMessageEnd protocol))
+
+
+(defmethod thrift-client-calculator-calculate-recv ((client thrift-client-calculator))
+  "Decode content of calculate response."
+  ;; Preset result
+  (setq res-success nil)
+  (setq res-ouch nil)
+  ;; decode
+  (setq protocol (oref client protocol))
+  (thrift-protocol-readStructBegin protocol)
+  (catch 'break
+    (while t
+      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq fname (pop r))
+      (setq ftype (pop r))
+      (setq fid (pop r))
+      (if (equal ftype (thrift-constant-type 'stop))
+	  (throw 'break t))
+      (cond ((equal fid 0)
+	     (if (equal ftype (thrift-constant-type 'i32))
+		 (setq res-success (thrift-protocol-readI32 protocol))
+	       (thrift-protocol-skip protocol ftype)))
+	    ((equal fid 1)
+	     (if (equal ftype (thrift-constant-type 'struct))
+		 (setq res-ouch (thrift-client-calculator-ouch-recv client))
+	       (thrift-protocol-skip protocol ftype)))
+	    (t
+	     (thrift-protocol-skip protocol ftype)))
+      (thrift-protocol-readFieldEnd protocol)))
+  (thrift-protocol-readStructEnd protocol)
+  (list res-success res-ouch))
+
+
+
+;;; Work struct functions ;;;
+
+(defmethod thrift-client-calculator-write-Work ((client thrift-client-calculator) parameters)
+  "Write Work struct."
+  (setq protocol (oref client protocol))
+  (thrift-protocol-writeStructBegin protocol "Work")
+  ;; parameter: num1
+  (when (nth 0 parameters)
+    (thrift-protocol-writeFieldBegin protocol
+				     "num1"
+				     (thrift-constant-type 'i32)
+				     1)
+    (thrift-protocol-writeI32 protocol (nth 0 parameters))
+    (thrift-protocol-writeFieldEnd protocol))
+  ;; parameter: num2
+  (when (nth 1 parameters)
+    (thrift-protocol-writeFieldBegin protocol
+				     "num2"
+				     (thrift-constant-type 'i32)
+				     2)
+    (thrift-protocol-writeI32 protocol (nth 1 parameters))
+    (thrift-protocol-writeFieldEnd protocol))
+  ;; parameter: op
+  (when (nth 2 parameters)
+    (thrift-protocol-writeFieldBegin protocol
+				     "op"
+				     (thrift-constant-type 'i32)
+				     3)
+    (thrift-protocol-writeI32 protocol (nth 2 parameters))
+    (thrift-protocol-writeFieldEnd protocol))
+  (when (nth 3 parameters)
+    (thrift-protocol-writeFieldBegin protocol
+				     "comment"
+				     (thrift-constant-type 'string)
+				     4)
+    (thrift-protocol-writeString protocol (nth 3 parameters))
+    (thrift-protocol-writeFieldEnd protocol))
+  (thrift-protocol-writeFieldStop protocol)
+  (thrift-protocol-writeStructEnd protocol))
+
+
 
 (provide 'thrift-client-calculator)
