@@ -34,14 +34,8 @@ Code:
 
 Created branch elisp.
 
-New file:
-t_el_generator.cc based on a copy of t_py_generator.
-
-Changed file:
-Makefile.am to register t_el_generator.cc for compilation.
-
-New dir (and content):
-lib/el to store the lib part (i.e. not generated) of the elisp implementation.
+To push to github:
+    > git push origin elisp
 
 
 Tutorial:
@@ -51,5 +45,3 @@ Ran the following:
     ../compiler/cpp/thrift -r -gen el tutorial.thrift
 
 to test the output of the new "el" generator. (It comes in a gen-el directory.)
-
-
