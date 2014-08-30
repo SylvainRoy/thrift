@@ -2,6 +2,9 @@
 
 ;; Author: Sylvain Roy <sylvain.roy@m4x.org>
 
+(defun log (str)
+  (message str))
+
 (defun thrift-constant-message-type (name)
   (cond   ((equal name 'call)      1)
 	  ((equal name 'reply)     2)

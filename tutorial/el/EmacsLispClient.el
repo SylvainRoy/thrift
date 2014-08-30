@@ -28,6 +28,7 @@
 (add-to-list 'load-path "./gen-el/")
 (require 'thrift-client-calculator)
 
+(message "\n1\n2\n3\n")
 
 ;; Create a Calculator client using tcp transport and the thrift binary protocol
 (setq transport (thrift-socket-transport "MyTransport"
@@ -48,8 +49,16 @@
 		    'add
 		    '(34 21)
 		    (lambda (err response)
-		      (message (concat "==> add(34, 21) = "
-				       (int-to-string (car response))))))
+		      (message "==> add(34, 21) = %d" response)))
+
+(thrift-client-call client
+		    'calculate
+		    '(1 (1 0 4 "comment"))
+		    (lambda (err response)
+		      (message "==> 1 / 0 = %s"
+			       (if err
+				   (format "InvalidOperation %S" err)
+				 "Whoa? You know how to divide by zero?"))))
 
 (thrift-client-call client
 		    'calculate
@@ -59,6 +68,5 @@
 		       4	   ; work.op
 		       "comment")) ; work.comment
 		    (lambda (err response)
-		      (message (concat "==> divide(48, 2) = "
-				       (int-to-string (car response))))
+		      (message "==> divide(48, 2) = %d" response)
 		      (thrift-transport-close transport)))

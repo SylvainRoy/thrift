@@ -49,7 +49,7 @@
       (thrift-protocol-skip protocol ftype))
     (thrift-protocol-readFieldEnd protocol)))
   (thrift-protocol-readStructEnd protocol)
-  nil)
+  (list nil nil))
 
 
 (defmethod thrift-client-calculator-write-add-args ((client thrift-client-calculator) seqid parameters)
@@ -84,6 +84,7 @@
 (defmethod thrift-client-calculator-read-add-result ((client thrift-client-calculator))
   "Decode content of add response."
   ;; Preset result
+  (setq res-error nil)
   (setq res-result nil)
   ;; decode
   (setq protocol (oref client protocol))
@@ -103,7 +104,7 @@
 	(thrift-protocol-skip protocol ftype))
       (thrift-protocol-readFieldEnd protocol)))
   (thrift-protocol-readStructEnd protocol)
-  (list res-result))
+  (list res-error res-result))
 
 
 (defmethod thrift-client-calculator-write-calculate-args ((client thrift-client-calculator) seqid parameters)
@@ -138,9 +139,9 @@
 (defmethod thrift-client-calculator-read-calculate-result ((client thrift-client-calculator))
   "Decode content of calculate response."
   ;; Preset result
-  (setq res-success nil)
-  (setq res-ouch nil)
-  ;; decode
+  (setq res-error nil)
+  (setq res-result nil)
+  ;; Decode
   (setq protocol (oref client protocol))
   (thrift-protocol-readStructBegin protocol)
   (catch 'break
@@ -151,19 +152,19 @@
       (setq fid (pop r))
       (if (equal ftype (thrift-constant-type 'stop))
 	  (throw 'break t))
-      (cond ((equal fid 0)
+      (cond ((equal fid 0) ; Normal result
 	     (if (equal ftype (thrift-constant-type 'i32))
-		 (setq res-success (thrift-protocol-readI32 protocol))
+		 (setq res-result (thrift-protocol-readI32 protocol))
 	       (thrift-protocol-skip protocol ftype)))
-	    ((equal fid 1)
+	    ((equal fid 1) ; InvalidOperation exception
 	     (if (equal ftype (thrift-constant-type 'struct))
-		 (setq res-ouch (thrift-client-calculator-ouch-recv client))
+		 (setq res-error (thrift-client-calculator-read-InvalidOperation client))
 	       (thrift-protocol-skip protocol ftype)))
 	    (t
 	     (thrift-protocol-skip protocol ftype)))
       (thrift-protocol-readFieldEnd protocol)))
   (thrift-protocol-readStructEnd protocol)
-  (list res-success res-ouch))
+  (list res-error res-result))
 
 
 (defmethod thrift-client-calculator-write-Work ((client thrift-client-calculator) parameters)
@@ -203,6 +204,37 @@
     (thrift-protocol-writeFieldEnd protocol))
   (thrift-protocol-writeFieldStop protocol)
   (thrift-protocol-writeStructEnd protocol))
+
+
+(defmethod thrift-client-calculator-read-InvalidOperation ((client thrift-client-calculator))
+  "Read InvalidOperation Exception."
+  ;; Preset result
+  (setq res-what nil)
+  (setq res-why nil)
+  ;; decode
+  (setq protocol (oref client protocol))
+  (thrift-protocol-readStructBegin protocol)
+  (catch 'break
+    (while t
+      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq fname (pop r))
+      (setq ftype (pop r))
+      (setq fid (pop r))
+      (if (equal ftype (thrift-constant-type 'stop))
+	  (throw 'break t))
+      (cond ((equal fid 1)
+	     (if (equal ftype (thrift-constant-type 'i32))
+		 (setq res-what (thrift-protocol-readI32 protocol))
+	       (thrift-protocol-skip protocol ftype)))
+	    ((equal fid 2)
+	     (if (equal ftype (thrift-constant-type 'string))
+		 (setq res-string (thrift-protocol-readString protocol))
+	       (thrift-protocol-skip protocol ftype)))
+	    (t
+	     (thrift-protocol-skip protocol ftype)))
+      (thrift-protocol-readFieldEnd protocol)))
+  (thrift-protocol-readStructEnd protocol)
+  (list res-what res-why))
 
 
 

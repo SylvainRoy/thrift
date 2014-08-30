@@ -30,33 +30,33 @@
 
 (defmethod thrift-client-reply-handler ((client thrift-base-client))
   "Callbacks to call upon reception of data by the tranport layer."
-  (message "reply handler")
+  (setq protocol (oref client protocol))
+  (setq tranport (oref protocol transport))
   (catch 'not-enough-data
     (while t
       ;; Recv and decode reply
       (setq res (thrift-client-recv client))
-      (setq seqid (car res))
-      (setq result (car (cdr res)))
-      ;; retrieve callback and fire it
+      (setq seqid (pop res))
+      (setq error (pop res))
+      (setq result (pop res))
+      ;; Retrieve callback and fire it
       (setq callback (plist-get (oref client callbacks) seqid))
-      (funcall callback nil result)
+      (funcall callback error result)
       ;; Flush the data successfuly read from recv buffer
-      (thrift-transport-confirm-reads (oref (oref client protocol) transport))))
-  ;; cancel reads that could not complete if any
-  (thrift-transport-cancel-reads (oref (oref client protocol) transport)))
+      (thrift-transport-confirm-reads transport)))
+  ;; Cancel reads that could not complete if any
+  (thrift-transport-cancel-reads transport))
 
 
 (defmethod thrift-client-call ((client thrift-base-client) function parameters callback)
   "Calls a thrift service of the client."
   (setq seqid (thrift-client-new-seqid client))
-  (message (concat "client call of " (pp function)
-		   " with seqid " (pp seqid)))
   ;; Save callback
   (oset client callbacks
 	(plist-put (oref client callbacks) seqid callback))
-  ;; Retrieve ad-hoc function to encode/send the query
+  ;; Retrieve ad-hoc function to encode and send the query
   (setq send-fun (car (plist-get (oref client functions) function)))
-  ;; send query
+  ;; Send query
   (funcall send-fun client seqid parameters)
   (thrift-transport-flush (oref (oref client protocol) transport)))
 
@@ -65,17 +65,15 @@
   "Decode the header of an incoming reply and call the associated decoder."
   ;; Decode message header
   (setq header (thrift-protocol-readMessageBegin (oref client protocol)))
-  (setq name (car header))
-  (setq type (car (cdr header)))
-  (setq seqid (car (cdr (cdr header))))
-  (message (concat "decoding incoming reply (name: " name
-		   ", type: " (int-to-string type)
-		   ", seqid: " (int-to-string seqid) ")"))
+  (setq name (pop header))
+  (setq type (pop header))
+  (setq seqid (pop header))
   ;; Retrieve ad-hoc function to read/decode the reply
   (setq recv-fun (car (cdr (plist-get (oref client functions) (intern name)))))
-  ;; read query
+  ;; Read query
   (setq result (funcall recv-fun client))
-  (list seqid result))
+  ;; Return (seqid, error, result)
+  (cons seqid result))
 
 
 (provide 'thrift-base-client)
