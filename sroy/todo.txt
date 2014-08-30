@@ -17,7 +17,12 @@ Emacs is limited to 30 bits, but this implementation of thrift is limited to 24 
 =====================================================================
 For the time being, I did it manually...
 
-
+6- Found a nice way to handle constant
+======================================
+Here is an example from nodejs client:
+     work.op = ttypes.Operation.SUBTRACT;
+For the time, being, I just use the int value.
+Not very nice...
 
 
 

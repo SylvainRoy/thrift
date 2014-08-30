@@ -45,3 +45,13 @@ Ran the following:
     ../compiler/cpp/thrift -r -gen el tutorial.thrift
 
 to test the output of the new "el" generator. (It comes in a gen-el directory.)
+
+
+Run the elisp code:
+===================
+
+Either eval the EmacsLispClient.el file/buffer or:
+
+    emacs -batch -l EmacsLispClient.el
+
+(There must be a server from the tutorial running on 9090.)

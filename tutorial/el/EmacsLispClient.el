@@ -43,19 +43,19 @@
 		    'ping
 		    '()
 		    (lambda (err response)
-		      (message "==> ping()")))
+		      (message "ping()")))
 
 (thrift-client-call client
 		    'add
-		    '(34 21)
+		    '(1 1)
 		    (lambda (err response)
-		      (message "==> add(34, 21) = %d" response)))
+		      (message "1+1=%d" response)))
 
 (thrift-client-call client
 		    'calculate
-		    '(1 (1 0 4 "comment"))
+		    '(1 (1 0 4 ""))
 		    (lambda (err response)
-		      (message "==> 1 / 0 = %s"
+		      (message "1/0=%s"
 			       (if err
 				   (format "InvalidOperation %S" err)
 				 "Whoa? You know how to divide by zero?"))))
@@ -63,10 +63,10 @@
 (thrift-client-call client
 		    'calculate
 		    '(1		   ; logid
-		      (48	   ; work.num1
-		       2	   ; work.num2
-		       4	   ; work.op
+		      (15	   ; work.num1
+		       10	   ; work.num2
+		       2	   ; work.op
 		       "comment")) ; work.comment
 		    (lambda (err response)
-		      (message "==> divide(48, 2) = %d" response)
+		      (message "15-10=%d" response)
 		      (thrift-transport-close transport)))
