@@ -28,8 +28,6 @@
 (add-to-list 'load-path "./gen-el/")
 (require 'thrift-client-calculator)
 
-(message "\n1\n2\n3\n")
-
 ;; Create a Calculator client using tcp transport and the thrift binary protocol
 (setq transport (thrift-socket-transport "MyTransport"
 					 :host "localhost"
