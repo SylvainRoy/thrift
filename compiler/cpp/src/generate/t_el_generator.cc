@@ -99,7 +99,6 @@ class t_el_generator : public t_generator {
    */
 
   void generate_service_helpers   (t_service*  tservice);
-  void generate_service_interface (t_service* tservice);
   void generate_service_client    (t_service* tservice);
   void generate_service_remote    (t_service* tservice);
   void generate_service_server    (t_service* tservice);
@@ -257,10 +256,10 @@ void t_el_generator::init_generator()
   }
 
   // Make output files
-  string f_types_name = package_dir_+"/"+"ttypes.el";
+  string f_types_name = package_dir_+"/"+"thrift-ns-"+module_+"-ttypes.el";
   f_types_.open(f_types_name.c_str());
 
-  string f_consts_name = package_dir_+"/"+"constants.el";
+  string f_consts_name = package_dir_+"/"+"thrift-ns-"+module_+"-constants.el";
   f_consts_.open(f_consts_name.c_str());
 
   // Print header
@@ -327,7 +326,7 @@ string t_el_generator::el_autogen_comment() {
  */
 string t_el_generator::el_imports() {
   return
-    string("from thrift.Thrift import TType, TMessageType, TException, TApplicationException");
+    string("(require 'thrift)\n(require 'thrift-base-client)");
 }
 
 /**
@@ -865,7 +864,7 @@ void t_el_generator::generate_el_struct_required_validator(ofstream& out,
  * @param tservice The service definition
  */
 void t_el_generator::generate_service(t_service* tservice) {
-  string f_service_name = package_dir_+"/"+service_name_+".el";
+  string f_service_name = package_dir_+"/thrift-ns-"+module_+"-svc-"+service_name_+".el";
   f_service_.open(f_service_name.c_str());
 
   f_service_ <<
@@ -874,19 +873,17 @@ void t_el_generator::generate_service(t_service* tservice) {
 
   if (tservice->get_extends() != NULL) {
     f_service_ <<
-      "import " << get_real_el_module(tservice->get_extends()->get_program()) <<
-      "." << tservice->get_extends()->get_name() << endl;
+      "(require 'thrift-ns-" << get_real_el_module(tservice->get_extends()->get_program()) <<
+      "-svc-" << tservice->get_extends()->get_name() << ")" << endl;
   }
 
   f_service_ <<
-    "from ttypes import *" << endl <<
-    "from thrift.Thrift import TProcessor" << endl <<
-    render_fastbinary_includes() << endl;
+    "(require 'thrift-ns-" + module_ + "ttypes)" << endl <<
+    "(require 'thrift-ns-" + module_ + "tconsts)" << endl;
 
   f_service_ << endl;
 
   // Generate the three main parts of the service
-  generate_service_interface(tservice);
   generate_service_client(tservice);
   generate_service_server(tservice);
   generate_service_helpers(tservice);
@@ -939,88 +936,54 @@ void t_el_generator::generate_el_function_helpers(t_function* tfunction) {
 }
 
 /**
- * Generates a service interface definition.
- *
- * @param tservice The service to generate a header definition for
- */
-void t_el_generator::generate_service_interface(t_service* tservice) {
-  string extends = "";
-  string extends_if = "";
-  if (tservice->get_extends() != NULL) {
-    extends = type_name(tservice->get_extends());
-    extends_if = "(" + extends + ".Iface)";
-  } else {
-    extends_if = "(object)";
-  }
-
-  f_service_ <<
-    "class Iface" << extends_if << ":" << endl;
-  indent_up();
-  generate_elisp_docstring(f_service_, tservice);
-  vector<t_function*> functions = tservice->get_functions();
-  if (functions.empty()) {
-    f_service_ <<
-      indent() << "pass" << endl;
-  } else {
-    vector<t_function*>::iterator f_iter;
-    for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
-      f_service_ <<
-	indent() << "def " << function_signature(*f_iter) << ":" << endl;
-      indent_up();
-      generate_elisp_docstring(f_service_, (*f_iter));
-      f_service_ <<
-	indent() << "pass" << endl << endl;
-      indent_down();
-    }
-  }
-
-  indent_down();
-  f_service_ <<
-    endl;
-}
-
-/**
  * Generates a service client definition.
  *
  * @param tservice The service to generate a server for.
  */
 void t_el_generator::generate_service_client(t_service* tservice) {
-  string extends = "";
   string extends_client = "";
   if (tservice->get_extends() != NULL) {
-    extends = type_name(tservice->get_extends());
-    extends_client = extends + ".Client, ";
+    t_program* program = tservice->get_extends()->get_program();
+    extends_client = "(thrift-ns-" + get_real_el_module(program) + "-svc-" + tservice->get_extends()->get_name() + ")";
   } else {
-    extends_client = "(object)";
+    extends_client = "(thrift-base-client)";
   }
 
+  // class definition
   f_service_ <<
-    "class Client" << extends_client << ":" << endl <<
-    "  implements(Iface)" << endl << endl;
+    "(defclass thrift-service-" << tservice->get_name() << " "
+				<< extends_client << endl;
 
   indent_up();
-  generate_elisp_docstring(f_service_, tservice);
 
   // Constructor function
   f_service_ <<
-    indent() << "def __init__(self, iprot, oprot=None):" << endl;
+    indent() << "((functions :initform (list" << endl;
 
-  if (extends.empty()) {
-    f_service_ <<
-      indent() << "  self._iprot = self._oprot = iprot" << endl <<
-      indent() << "  if oprot is not None:" << endl <<
-      indent() << "    self._oprot = oprot" << endl <<
-      indent() << "  self._seqid = 0" << endl <<
-      endl;
-  } else {
-    f_service_ <<
-      indent() << "  " << extends << ".Client.__init__(self, iprot, oprot)" << endl <<
-      endl;
-  }
-
-  // Generate client method implementations
+  // Loop on the operations of the client
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::const_iterator f_iter;
+  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
+    string funname = (*f_iter)->get_name();
+
+    // Reference helper functions
+    f_service_ << "                         '" << funname << endl;
+    f_service_ << "                         '(thrift-client-" << tservice->get_name()
+	       << "-write-" << funname << "-args" << endl
+	       << "                           thrift-client-" << tservice->get_name()
+	       << "-read-" << funname << "-result)" << endl;
+  }
+
+  f_service_ <<
+    indent() << "            :document \"Helper methods to encode/decode the various functions of the service.\"))" << endl;
+  f_service_ <<
+    indent() << "\"Thrift generate class for the " << tservice->get_name() << " service.\")" << endl;
+
+
+  f_service_ << endl << "\ntodo - todo - todo - todo - todo - todo - todo\n" << endl;
+
+
+  // Generate client method implementations
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
     t_struct* arg_struct = (*f_iter)->get_arglist();
     const vector<t_field*>& fields = arg_struct->get_members();
@@ -1148,6 +1111,10 @@ void t_el_generator::generate_service_client(t_service* tservice) {
       f_service_ << endl;
     }
   }
+
+
+  generate_elisp_docstring(f_service_, tservice);
+
 
   indent_down();
   f_service_ <<
