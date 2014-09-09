@@ -1,5 +1,16 @@
 Here are todo to finalise the implementation:
 
+0- Review manual generated code to be in synch with new finding from auto generation
+====================================================================================
+ - thrift-client-calculator.el should be thrift-ns-tutorial-svc-Calculator.el (same with class)
+ - the class thrift-ns-tutorial-svc-Calculator should inherit from thrift-ns-shared-svc-SharedService
+ - create files:
+   - thrift-ns-shared-ttypes.el
+   - thrift-ns-shared-constants.el
+   - thrift-ns-shared-svc-SharedService.el
+   - thrift-ns-tutorial-ttypes.el
+   - thrift-ns-tutorial-constants.el
+
 1- The binary protocol should support doubles
 =============================================
 Not that simple. Emacs does not support double.
@@ -16,6 +27,7 @@ Emacs is limited to 30 bits, but this implementation of thrift is limited to 24 
 5- the directory tutorial/el/gen-el should be automatically generated
 =====================================================================
 For the time being, I did it manually...
+==> on-going...
 
 6- Found a nice way to handle constant
 ======================================
