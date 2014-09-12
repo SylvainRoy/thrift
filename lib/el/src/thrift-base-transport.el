@@ -1,8 +1,8 @@
 (require 'eieio)
 
 (defclass thrift-base-transport ()
-  ((client :initform nil
-	   :document "The client associated to this transport."))
+  ((callback :initform nil
+	     :document "A callback to call upon data reception."))
   "A 'virtual' class for thrift transports.")
 
 

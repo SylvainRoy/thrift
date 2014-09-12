@@ -1,11 +1,5 @@
 Here are todo to finalise the implementation:
 
--1- Review linking of generated method in service objects
-=========================================================
-Generated methods should be appended to 'functions' attribute of services from initialize-instance.
-This will allow inheritance to work when a service extends another.
-For the time being the 'functions' attribute is overwritten by the child class.
-
 0- Review manual generated code to be in synch with new finding from auto generation
 ====================================================================================
  - thrift-client-calculator.el should be thrift-ns-tutorial-svc-Calculator.el (same with class)
@@ -70,3 +64,9 @@ Plists seem better. What about something like:
 proof of concept:
 (setq plist '(a: 1 b: (c: 2 d: 3) e: 4))
 (plist-get (plist-get plist 'b:) 'c:)
+
+-1- Review linking of generated method in service objects
+=========================================================
+Generated methods should be appended to 'functions' attribute of services from initialize-instance.
+This will allow inheritance to work when a service extends another.
+For the time being the 'functions' attribute is overwritten by the child class.

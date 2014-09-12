@@ -12,16 +12,28 @@
 
 
 (defclass thrift-gen-tutorial-Calculator (thrift-service)
-  ((functions :initform (list
-			 'ping       '(thrift-gen-tutorial-Calculator-write-ping-args
-				       thrift-gen-tutorial-Calculator-read-ping-result)
-			 'add        '(thrift-gen-tutorial-Calculator-write-add-args
-				       thrift-gen-tutorial-Calculator-read-add-result)
-			 'calculate  '(thrift-gen-tutorial-Calculator-write-calculate-args
-				       thrift-gen-tutorial-Calculator-read-calculate-result))
-	      :document "Helper functions for the various operations supported by the client."))
-  "Generated class for the calculator.")
+  ()
+  "Generated class for the tutorial/Calculator service.")
 
+
+(defmethod initialize-instance ((svc thrift-gen-tutorial-Calculator) &rest slots)
+  "Create a new instance of a tutorial/Calculator service."
+  ;; Init parent object
+  (call-next-method)
+  ;; Register helper methods
+  (oset svc
+	functions
+	(append (oref svc functions)
+		'(ping
+		   (thrift-gen-tutorial-Calculator-write-ping-args
+		    thrift-gen-tutorial-Calculator-read-ping-result)
+		  add
+		   (thrift-gen-tutorial-Calculator-write-add-args
+		    thrift-gen-tutorial-Calculator-read-add-result)
+		  calculate
+		   (thrift-gen-tutorial-Calculator-write-calculate-args
+		    thrift-gen-tutorial-Calculator-read-calculate-result))))
+  svc)
 
 
 (defmethod thrift-gen-tutorial-Calculator-write-ping-args ((client thrift-gen-tutorial-Calculator) seqid args)

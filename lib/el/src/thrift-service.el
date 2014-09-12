@@ -4,21 +4,22 @@
 (defclass thrift-service ()
   ((protocol  :initarg :protocol
 	      :document "Protocol to encode/decode and send/recv data.")
-   (seqid     :initform 12
+   (seqid     :initform 0
 	      :document "The sequence ID of the client.")
    (callbacks :initform (list)
 	      :document "The callbacks, indexed by seqid, to call once the reply has been received.")
    (functions :initform nil
-	      :document "Helper functions for the various operations supported by the client."))
+	      :document "Encoders/decoders of the service operations."))
   "Base class for clients.")
 
 
 (defmethod initialize-instance ((client thrift-service) &rest slots)
-  "Initializes of client object."
+  "Initialize the service object."
   (apply 'shared-initialize client slots)
-  ;; Link this client in the associated transport.
+  ;; Register a callback in transport to be warned upon data reception
   (setq trans (oref (oref client protocol) transport))
-  (oset trans client client))
+  (setq c client) ; required to have 'client' visible in the lambda function
+  (oset trans callback (lambda () (thrift-client-reply-handler c))))
 
 
 (defmethod thrift-call ((client thrift-service) function parameters callback)

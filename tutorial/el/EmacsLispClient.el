@@ -1,4 +1,4 @@
-;;; EmacsLispClient.el ---Tutorial of Thrift usage.
+;;; Emacslispclient.el ---Tutorial of Thrift usage.
 
 ;; Licensed to the Apache Software Foundation (ASF) under one
 ;; or more contributor license agreements. See the NOTICE file
@@ -28,47 +28,49 @@
 (add-to-list 'load-path "./gen-el/")
 (require 'thrift-gen-tutorial-Calculator)
 
-;; Create a Calculator client using tcp transport and the thrift binary protocol
-(setq transport (thrift-socket-transport "MyTransport"
-					 :host "localhost"
-					 :port 9090))
-(setq protocol (thrift-binary-protocol "MyProtocol" :transport transport))
-(setq client (thrift-gen-tutorial-Calculator "MyCalculator" :protocol protocol))
+;; Create a Calculator client using TCP transport and binary protocol
+(setq mytransport (thrift-socket-transport "MyTransport"
+					   :host "localhost"
+					   :port 9090))
+(setq myprotocol (thrift-binary-protocol "MyProtocol"
+					 :transport mytransport))
+(setq myclient (thrift-gen-tutorial-Calculator "MyService"
+					       :protocol myprotocol))
 
-(thrift-transport-open transport)
+(thrift-transport-open mytransport)
 
-(thrift-call client
+(thrift-call myclient
 	     'ping
 	     '()
 	     (lambda (err response)
 	       (message "ping()")))
 
-(thrift-call client
+(thrift-call myclient
 	     'add
 	     '(:num1 1 :num2 1)
 	     (lambda (err response)
 	       (message "1+1=%d" response)))
 
-(thrift-call client
+(thrift-call myclient
 	     'calculate
 	     '(:logid 1
-	       :w (:num1    1
-		   :num2    0
-		   :op      4
-		   :comment ""))
+		      :w (:num1    1
+				   :num2    0
+				   :op      4
+				   :comment ""))
 	     (lambda (err response)
 	       (message "1/0=%s"
 			(if err
 			    (format "InvalidOperation %S" err)
 			  "Whoa? You know how to divide by zero?"))))
 
-(thrift-call client
+(thrift-call myclient
 	     'calculate
 	     '(:logid 1
-	       :w (:num1    15
-		   :num2    10
-		   :op      2
-		   :comment "comment"))
+		      :w (:num1    15
+				   :num2    10
+				   :op      2
+				   :comment "comment"))
 	     (lambda (err response)
 	       (message "15-10=%d" response)
-	       (thrift-transport-close transport)))
+	       (thrift-transport-close mytransport)))
