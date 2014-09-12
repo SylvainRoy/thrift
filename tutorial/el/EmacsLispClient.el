@@ -45,7 +45,7 @@
 
 (thrift-call client
 	     'add
-	     '(num1: 1 num2: 1)
+	     '(:num1 1 :num2 1)
 	     (lambda (err response)
 	       (message "1+1=%d" response)))
 
