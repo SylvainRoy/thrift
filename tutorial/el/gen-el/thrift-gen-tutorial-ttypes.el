@@ -9,7 +9,7 @@
 (require 'thrift)
 
 
-(defmethod thrift-gen-tutorial-Calculator-write-Work (protocol work)
+(defun thrift-gen-tutorial-Calculator-write-Work (protocol work)
   "Write Work struct."
   (thrift-protocol-writeStructBegin protocol "Work")
   ;; parameter: num1
@@ -48,7 +48,7 @@
   (thrift-protocol-writeStructEnd protocol))
 
 
-(defmethod thrift-gen-tutorial-Calculator-read-InvalidOperation (protocol)
+(defun thrift-gen-tutorial-Calculator-read-InvalidOperation (protocol)
   "Read InvalidOperation Exception."
   ;; Preset result
   (setq res-what nil)

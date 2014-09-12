@@ -36,9 +36,8 @@
   svc)
 
 
-(defmethod thrift-gen-tutorial-Calculator-write-ping-args ((client thrift-gen-tutorial-Calculator) seqid args)
+(defun thrift-gen-tutorial-Calculator-write-ping-args (protocol seqid args)
   "Send ping request."
-  (setq protocol (oref client protocol))
   (thrift-protocol-writeMessageBegin protocol
 				     "ping"
 				     (thrift-constant-message-type 'call)
@@ -49,9 +48,8 @@
   (thrift-protocol-writeMessageEnd protocol))
 
 
-(defmethod thrift-gen-tutorial-Calculator-read-ping-result ((client thrift-gen-tutorial-Calculator))
+(defun thrift-gen-tutorial-Calculator-read-ping-result (protocol)
   "Decode content of ping response."
-  (setq protocol (oref client protocol))
   (thrift-protocol-readStructBegin protocol)
   (catch 'break
     (while t
@@ -67,9 +65,8 @@
   (list nil nil))
 
 
-(defmethod thrift-gen-tutorial-Calculator-write-add-args ((client thrift-gen-tutorial-Calculator) seqid args)
+(defun thrift-gen-tutorial-Calculator-write-add-args (protocol seqid args)
   "Send add request."
-  (setq protocol (oref client protocol))
   (thrift-protocol-writeMessageBegin protocol
 				     "add"
 				     (thrift-constant-message-type 'call)
@@ -96,13 +93,12 @@
   (thrift-protocol-writeMessageEnd protocol))
 
 
-(defmethod thrift-gen-tutorial-Calculator-read-add-result ((client thrift-gen-tutorial-Calculator))
+(defun thrift-gen-tutorial-Calculator-read-add-result (protocol)
   "Decode content of add response."
   ;; Preset result
   (setq res-error nil)
   (setq res-result nil)
   ;; decode
-  (setq protocol (oref client protocol))
   (thrift-protocol-readStructBegin protocol)
   (catch 'break
     (while t
@@ -122,9 +118,8 @@
   (list res-error res-result))
 
 
-(defmethod thrift-gen-tutorial-Calculator-write-calculate-args ((client thrift-gen-tutorial-Calculator) seqid args)
+(defun thrift-gen-tutorial-Calculator-write-calculate-args (protocol seqid args)
   "Send calculate request."
-  (setq protocol (oref client protocol))
   (thrift-protocol-writeMessageBegin protocol
 				     "calculate"
 				     (thrift-constant-message-type 'call)
@@ -151,13 +146,12 @@
   (thrift-protocol-writeMessageEnd protocol))
 
 
-(defmethod thrift-gen-tutorial-Calculator-read-calculate-result ((client thrift-gen-tutorial-Calculator))
+(defun thrift-gen-tutorial-Calculator-read-calculate-result (protocol)
   "Decode content of calculate response."
   ;; Preset result
   (setq res-error nil)
   (setq res-result nil)
   ;; Decode
-  (setq protocol (oref client protocol))
   (thrift-protocol-readStructBegin protocol)
   (catch 'break
     (while t

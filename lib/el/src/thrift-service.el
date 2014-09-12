@@ -5,49 +5,49 @@
   ((protocol  :initarg :protocol
 	      :document "Protocol to encode/decode and send/recv data.")
    (seqid     :initform 0
-	      :document "The sequence ID of the client.")
+	      :document "The sequence ID of the service.")
    (callbacks :initform (list)
 	      :document "The callbacks, indexed by seqid, to call once the reply has been received.")
    (functions :initform nil
 	      :document "Encoders/decoders of the service operations."))
-  "Base class for clients.")
+  "Base class for services.")
 
 
-(defmethod initialize-instance ((client thrift-service) &rest slots)
+(defmethod initialize-instance ((service thrift-service) &rest slots)
   "Initialize the service object."
-  (apply 'shared-initialize client slots)
+  (apply 'shared-initialize service slots)
   ;; Register a callback in transport to be warned upon data reception
-  (setq trans (oref (oref client protocol) transport))
-  (setq c client) ; required to have 'client' visible in the lambda function
-  (oset trans callback (lambda () (thrift-client-reply-handler c))))
+  (setq trans (oref (oref service protocol) transport))
+  (setq c service) ; required to have 'service' visible in the lambda function
+  (oset trans callback (lambda () (thrift-service-reply-handler c))))
 
 
-(defmethod thrift-call ((client thrift-service) function parameters callback)
-  "Calls a thrift service of the client."
-  (setq seqid (thrift-client-new-seqid client))
+(defmethod thrift-call ((service thrift-service) function parameters callback)
+  "Calls a thrift service of the service."
+  (setq seqid (thrift-service-new-seqid service))
   ;; Save callback
-  (oset client callbacks
-	(plist-put (oref client callbacks) seqid callback))
+  (oset service callbacks
+	(plist-put (oref service callbacks) seqid callback))
   ;; Retrieve ad-hoc function to encode and send the query
-  (setq send-fun (car (plist-get (oref client functions) function)))
+  (setq send-fun (car (plist-get (oref service functions) function)))
   ;; Send query
-  (funcall send-fun client seqid parameters)
-  (thrift-transport-flush (oref (oref client protocol) transport)))
+  (funcall send-fun (oref service protocol) seqid parameters)
+  (thrift-transport-flush (oref (oref service protocol) transport)))
 
 
-(defmethod thrift-client-reply-handler ((client thrift-service))
+(defmethod thrift-service-reply-handler ((service thrift-service))
   "Callbacks to call upon reception of data by the tranport layer."
-  (setq protocol (oref client protocol))
+  (setq protocol (oref service protocol))
   (setq tranport (oref protocol transport))
   (catch 'not-enough-data
     (while t
       ;; Receive and decode reply
-      (setq res (thrift-client-recv client))
+      (setq res (thrift-service-recv service))
       (setq seqid (pop res))
       (setq error (pop res))
       (setq result (pop res))
       ;; Retrieve associated callback and fire it
-      (setq callback (plist-get (oref client callbacks) seqid))
+      (setq callback (plist-get (oref service callbacks) seqid))
       (funcall callback error result)
       ;; Flush the data successfuly read from recv buffer
       (thrift-transport-confirm-reads transport)))
@@ -55,25 +55,25 @@
   (thrift-transport-cancel-reads transport))
 
 
-(defmethod thrift-client-recv ((client thrift-service))
+(defmethod thrift-service-recv ((service thrift-service))
   "Decode the header of an incoming reply and call the associated decoder."
   ;; Decode message header
-  (setq header (thrift-protocol-readMessageBegin (oref client protocol)))
+  (setq header (thrift-protocol-readMessageBegin (oref service protocol)))
   (setq name (pop header))
   (setq type (pop header))
   (setq seqid (pop header))
   ;; Retrieve ad-hoc function to read/decode the reply
-  (setq recv-fun (car (cdr (plist-get (oref client functions) (intern name)))))
+  (setq recv-fun (car (cdr (plist-get (oref service functions) (intern name)))))
   ;; Read query
-  (setq result (funcall recv-fun client))
+  (setq result (funcall recv-fun (oref service protocol)))
   ;; Return (seqid, error, result)
   (cons seqid result))
 
 
-(defmethod thrift-client-new-seqid ((client thrift-service))
+(defmethod thrift-service-new-seqid ((service thrift-service))
   "Returns the next sequence ID to use."
-  (setq seqid (oref client seqid))
-  (oset client seqid (+ 1 seqid))
+  (setq seqid (oref service seqid))
+  (oset service seqid (+ 1 seqid))
   seqid)
 
 
