@@ -32,8 +32,7 @@
 		    thrift-gen-tutorial-Calculator-read-add-result)
 		  calculate
 		   (thrift-gen-tutorial-Calculator-write-calculate-args
-		    thrift-gen-tutorial-Calculator-read-calculate-result))))
-  svc)
+		    thrift-gen-tutorial-Calculator-read-calculate-result)))))
 
 
 (defun thrift-gen-tutorial-Calculator-write-ping-args (protocol seqid args)

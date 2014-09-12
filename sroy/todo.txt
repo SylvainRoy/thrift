@@ -1,16 +1,5 @@
 Here are todo to finalise the implementation:
 
-0- Review manual generated code to be in synch with new finding from auto generation
-====================================================================================
- - thrift-client-calculator.el should be thrift-ns-tutorial-svc-Calculator.el (same with class)
- - the class thrift-gen-tutorial-Calculator should inherit from thrift-gen-shared-SharedService
- - create files:
-   - thrift-gen-shared-ttypes.el
-   - thrift-gen-shared-constants.el
-   - thrift-gen-shared-SharedService.el
-   - thrift-gen-tutorial-ttypes.el
-   - thrift-gen-tutorial-constants.el
-
 1- The binary protocol should support doubles
 =============================================
 Not that simple. Emacs does not support double.
@@ -70,3 +59,14 @@ proof of concept:
 Generated methods should be appended to 'functions' attribute of services from initialize-instance.
 This will allow inheritance to work when a service extends another.
 For the time being the 'functions' attribute is overwritten by the child class.
+
+0- Review manual generated code to be in synch with new finding from auto generation
+====================================================================================
+ - thrift-client-calculator.el should be thrift-ns-tutorial-svc-Calculator.el (same with class)
+ - the class thrift-gen-tutorial-Calculator should inherit from thrift-gen-shared-SharedService
+ - create files:
+   - thrift-gen-shared-ttypes.el
+   - thrift-gen-shared-constants.el
+   - thrift-gen-shared-SharedService.el
+   - thrift-gen-tutorial-ttypes.el
+   - thrift-gen-tutorial-constants.el
