@@ -8,10 +8,10 @@
 
 (require 'thrift)
 (require 'thrift-gen-tutorial-ttypes)
-(require 'thrift-base-client)
+(require 'thrift-service)
 
 
-(defclass thrift-gen-tutorial-Calculator (thrift-base-client)
+(defclass thrift-gen-tutorial-Calculator (thrift-service)
   ((functions :initform (list
 			 'ping       '(thrift-gen-tutorial-Calculator-write-ping-args
 				       thrift-gen-tutorial-Calculator-read-ping-result)

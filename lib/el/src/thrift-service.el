@@ -1,7 +1,7 @@
 (require 'eieio)
 
 
-(defclass thrift-base-client ()
+(defclass thrift-service ()
   ((protocol  :initarg :protocol
 	      :document "Protocol to encode/decode and send/recv data.")
    (seqid     :initform 12
@@ -13,7 +13,7 @@
   "Base class for clients.")
 
 
-(defmethod initialize-instance ((client thrift-base-client) &rest slots)
+(defmethod initialize-instance ((client thrift-service) &rest slots)
   "Initializes of client object."
   (apply 'shared-initialize client slots)
   ;; Link this client in the associated transport.
@@ -21,7 +21,7 @@
   (oset trans client client))
 
 
-(defmethod thrift-call ((client thrift-base-client) function parameters callback)
+(defmethod thrift-call ((client thrift-service) function parameters callback)
   "Calls a thrift service of the client."
   (setq seqid (thrift-client-new-seqid client))
   ;; Save callback
@@ -34,7 +34,7 @@
   (thrift-transport-flush (oref (oref client protocol) transport)))
 
 
-(defmethod thrift-client-reply-handler ((client thrift-base-client))
+(defmethod thrift-client-reply-handler ((client thrift-service))
   "Callbacks to call upon reception of data by the tranport layer."
   (setq protocol (oref client protocol))
   (setq tranport (oref protocol transport))
@@ -54,7 +54,7 @@
   (thrift-transport-cancel-reads transport))
 
 
-(defmethod thrift-client-recv ((client thrift-base-client))
+(defmethod thrift-client-recv ((client thrift-service))
   "Decode the header of an incoming reply and call the associated decoder."
   ;; Decode message header
   (setq header (thrift-protocol-readMessageBegin (oref client protocol)))
@@ -69,11 +69,11 @@
   (cons seqid result))
 
 
-(defmethod thrift-client-new-seqid ((client thrift-base-client))
+(defmethod thrift-client-new-seqid ((client thrift-service))
   "Returns the next sequence ID to use."
   (setq seqid (oref client seqid))
   (oset client seqid (+ 1 seqid))
   seqid)
 
 
-(provide 'thrift-base-client)
+(provide 'thrift-service)
