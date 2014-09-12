@@ -2,22 +2,15 @@
 
 
 (defclass thrift-base-client ()
-  ((protocol :initarg :protocol
-	     :document "Protocol to encode/decode and send/recv data.")
-   (seqid    :initform 12
-	     :document "The sequence ID of the client.")
+  ((protocol  :initarg :protocol
+	      :document "Protocol to encode/decode and send/recv data.")
+   (seqid     :initform 12
+	      :document "The sequence ID of the client.")
    (callbacks :initform (list)
 	      :document "The callbacks, indexed by seqid, to call once the reply has been received.")
    (functions :initform nil
 	      :document "Helper functions for the various operations supported by the client."))
   "Base class for clients.")
-
-
-(defmethod thrift-client-new-seqid ((client thrift-base-client))
-  "Returns the next sequence ID to use."
-  (setq seqid (oref client seqid))
-  (oset client seqid (+ 1 seqid))
-  seqid)
 
 
 (defmethod initialize-instance ((client thrift-base-client) &rest slots)
@@ -28,27 +21,7 @@
   (oset trans client client))
 
 
-(defmethod thrift-client-reply-handler ((client thrift-base-client))
-  "Callbacks to call upon reception of data by the tranport layer."
-  (setq protocol (oref client protocol))
-  (setq tranport (oref protocol transport))
-  (catch 'not-enough-data
-    (while t
-      ;; Recv and decode reply
-      (setq res (thrift-client-recv client))
-      (setq seqid (pop res))
-      (setq error (pop res))
-      (setq result (pop res))
-      ;; Retrieve callback and fire it
-      (setq callback (plist-get (oref client callbacks) seqid))
-      (funcall callback error result)
-      ;; Flush the data successfuly read from recv buffer
-      (thrift-transport-confirm-reads transport)))
-  ;; Cancel reads that could not complete if any
-  (thrift-transport-cancel-reads transport))
-
-
-(defmethod thrift-client-call ((client thrift-base-client) function parameters callback)
+(defmethod thrift-call ((client thrift-base-client) function parameters callback)
   "Calls a thrift service of the client."
   (setq seqid (thrift-client-new-seqid client))
   ;; Save callback
@@ -59,6 +32,26 @@
   ;; Send query
   (funcall send-fun client seqid parameters)
   (thrift-transport-flush (oref (oref client protocol) transport)))
+
+
+(defmethod thrift-client-reply-handler ((client thrift-base-client))
+  "Callbacks to call upon reception of data by the tranport layer."
+  (setq protocol (oref client protocol))
+  (setq tranport (oref protocol transport))
+  (catch 'not-enough-data
+    (while t
+      ;; Receive and decode reply
+      (setq res (thrift-client-recv client))
+      (setq seqid (pop res))
+      (setq error (pop res))
+      (setq result (pop res))
+      ;; Retrieve associated callback and fire it
+      (setq callback (plist-get (oref client callbacks) seqid))
+      (funcall callback error result)
+      ;; Flush the data successfuly read from recv buffer
+      (thrift-transport-confirm-reads transport)))
+  ;; Cancel reads that could not complete if any
+  (thrift-transport-cancel-reads transport))
 
 
 (defmethod thrift-client-recv ((client thrift-base-client))
@@ -74,6 +67,13 @@
   (setq result (funcall recv-fun client))
   ;; Return (seqid, error, result)
   (cons seqid result))
+
+
+(defmethod thrift-client-new-seqid ((client thrift-base-client))
+  "Returns the next sequence ID to use."
+  (setq seqid (oref client seqid))
+  (oset client seqid (+ 1 seqid))
+  seqid)
 
 
 (provide 'thrift-base-client)

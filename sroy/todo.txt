@@ -1,15 +1,21 @@
 Here are todo to finalise the implementation:
 
+-1- Review linking of generated method in service objects
+=========================================================
+Generated methods should be appended to 'functions' attribute of services from initialize-instance.
+This will allow inheritance to work when a service extends another.
+For the time being the 'functions' attribute is overwritten by the child class.
+
 0- Review manual generated code to be in synch with new finding from auto generation
 ====================================================================================
  - thrift-client-calculator.el should be thrift-ns-tutorial-svc-Calculator.el (same with class)
- - the class thrift-ns-tutorial-svc-Calculator should inherit from thrift-ns-shared-svc-SharedService
+ - the class thrift-gen-tutorial-Calculator should inherit from thrift-gen-shared-SharedService
  - create files:
-   - thrift-ns-shared-ttypes.el
-   - thrift-ns-shared-constants.el
-   - thrift-ns-shared-svc-SharedService.el
-   - thrift-ns-tutorial-ttypes.el
-   - thrift-ns-tutorial-constants.el
+   - thrift-gen-shared-ttypes.el
+   - thrift-gen-shared-constants.el
+   - thrift-gen-shared-SharedService.el
+   - thrift-gen-tutorial-ttypes.el
+   - thrift-gen-tutorial-constants.el
 
 1- The binary protocol should support doubles
 =============================================
@@ -52,3 +58,15 @@ Then, the data would be fluched only by a readMessageEnd. This would guarantee t
 6- the transport must have the method flush and only sent when it is called
 ===========================================================================
 Otherwise, the network usage is damn innefficient...
+
+-2- Review support of struct/exception
+======================================
+Struct and exception are currently list.
+That does work OK but isn't very nice: the attributes of the struct do not appear at all.
+Objects seem a little to much (inheritance is not used and the syntax to create an object is painful).
+Plists seem better. What about something like:
+'(num1: 12 num2: 34 comment: "a string")
+
+proof of concept:
+(setq plist '(a: 1 b: (c: 2 d: 3) e: 4))
+(plist-get (plist-get plist 'b:) 'c:)

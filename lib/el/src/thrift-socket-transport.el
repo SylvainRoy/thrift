@@ -4,16 +4,16 @@
 (defclass thrift-socket-transport (thrift-base-transport)
   ((network-process :initform nil
 		    :document "The underlying network-process object.")
-   (recv-buffer :initform ""
-		:document "Buffer to store incoming data.")
-   (recv-cursor :initform 0
-		:document "The position of the read cursor in the recv buffer.")
-   (send-buffer :initform ""
-		:document "Buffer to store outgoing data.")
-   (host :initarg :host
-	 :document "the host to connect to as a name or an internet address.")
-   (port :initarg :port
-	 :document "the port number to connect to."))
+   (recv-buffer     :initform ""
+		    :document "Buffer to store incoming data.")
+   (recv-cursor     :initform 0
+		    :document "The position of the read cursor in the recv buffer.")
+   (send-buffer     :initform ""
+		    :document "Buffer to store outgoing data.")
+   (host	    :initarg :host
+		    :document "the host to connect to as a name or an internet address.")
+   (port	    :initarg :port
+		    :document "the port number to connect to."))
   "TCP tranport implementation.")
 
 
@@ -37,9 +37,11 @@
 						    :filter 'trans-filter
 						    :sentinel 'trans-sentinel)))
 
+
 (defmethod thrift-transport-close ((trans thrift-base-transport))
   "Close the transport."
   (delete-process (oref trans network-process)))
+
 
 (defmethod thrift-transport-read ((trans thrift-base-transport) size)
   "Read data."
@@ -51,11 +53,13 @@
   (oset trans recv-cursor (+ cursor size))
   (string-to-unibyte out))
 
+
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)
   "Write data."
   (oset trans send-buffer
 	(concat (oref trans send-buffer)
 		data)))
+
 
 (defmethod thrift-transport-flush ((trans thrift-base-transport))
   "Flush the transport."
@@ -63,9 +67,11 @@
 		       (oref trans send-buffer))
   (oset trans send-buffer ""))
 
+
 (defmethod thrift-transport-cancel-reads ((trans thrift-base-transport))
   "Cancel the reads done since last read confirmation."
   (oset trans recv-cursor 0))
+
 
 (defmethod thrift-transport-confirm-reads ((trans thrift-base-transport))
   "Cancel the reads done since last read confirmation."

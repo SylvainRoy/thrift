@@ -26,45 +26,49 @@
 
 ;; Require module generated for this tutorial
 (add-to-list 'load-path "./gen-el/")
-(require 'thrift-client-calculator)
+(require 'thrift-gen-tutorial-Calculator)
 
 ;; Create a Calculator client using tcp transport and the thrift binary protocol
 (setq transport (thrift-socket-transport "MyTransport"
 					 :host "localhost"
 					 :port 9090))
 (setq protocol (thrift-binary-protocol "MyProtocol" :transport transport))
-(setq client (thrift-client-calculator "MyCalculator" :protocol protocol))
+(setq client (thrift-gen-tutorial-Calculator "MyCalculator" :protocol protocol))
 
 (thrift-transport-open transport)
 
-(thrift-client-call client
-		    'ping
-		    '()
-		    (lambda (err response)
-		      (message "ping()")))
+(thrift-call client
+	     'ping
+	     '()
+	     (lambda (err response)
+	       (message "ping()")))
 
-(thrift-client-call client
-		    'add
-		    '(1 1)
-		    (lambda (err response)
-		      (message "1+1=%d" response)))
+(thrift-call client
+	     'add
+	     '(num1: 1 num2: 1)
+	     (lambda (err response)
+	       (message "1+1=%d" response)))
 
-(thrift-client-call client
-		    'calculate
-		    '(1 (1 0 4 ""))
-		    (lambda (err response)
-		      (message "1/0=%s"
-			       (if err
-				   (format "InvalidOperation %S" err)
-				 "Whoa? You know how to divide by zero?"))))
+(thrift-call client
+	     'calculate
+	     '(logid: 1
+	       w: (num1:    1
+		   num2:    0
+		   op:      4
+		   comment: ""))
+	     (lambda (err response)
+	       (message "1/0=%s"
+			(if err
+			    (format "InvalidOperation %S" err)
+			  "Whoa? You know how to divide by zero?"))))
 
-(thrift-client-call client
-		    'calculate
-		    '(1		   ; logid
-		      (15	   ; work.num1
-		       10	   ; work.num2
-		       2	   ; work.op
-		       "comment")) ; work.comment
-		    (lambda (err response)
-		      (message "15-10=%d" response)
-		      (thrift-transport-close transport)))
+(thrift-call client
+	     'calculate
+	     '(logid: 1
+	       w: (num1:    15
+		   num2:    10
+		   op:      2
+		   comment: "comment"))
+	     (lambda (err response)
+	       (message "15-10=%d" response)
+	       (thrift-transport-close transport)))
