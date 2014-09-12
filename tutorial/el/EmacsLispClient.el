@@ -51,11 +51,11 @@
 
 (thrift-call client
 	     'calculate
-	     '(logid: 1
-	       w: (num1:    1
-		   num2:    0
-		   op:      4
-		   comment: ""))
+	     '(:logid 1
+	       :w (:num1    1
+		   :num2    0
+		   :op      4
+		   :comment ""))
 	     (lambda (err response)
 	       (message "1/0=%s"
 			(if err
@@ -64,11 +64,11 @@
 
 (thrift-call client
 	     'calculate
-	     '(logid: 1
-	       w: (num1:    15
-		   num2:    10
-		   op:      2
-		   comment: "comment"))
+	     '(:logid 1
+	       :w (:num1    15
+		   :num2    10
+		   :op      2
+		   :comment "comment"))
 	     (lambda (err response)
 	       (message "15-10=%d" response)
 	       (thrift-transport-close transport)))
