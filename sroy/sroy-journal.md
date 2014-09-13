@@ -29,6 +29,13 @@ Then, to cross test:
 This one only works for python to python tests (so a very small subset).
 
 
+Compile:
+========
+
+From the elisp generator:
+    cd ../../; make -k; cd ../../tutorial; ../compiler/cpp/thrift --gen el tutorial.thrift
+
+
 Code:
 =====
 

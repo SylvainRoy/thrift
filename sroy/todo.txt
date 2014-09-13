@@ -1,5 +1,17 @@
 Here are todo to finalise the implementation:
 
+-2- writeI32 should be write-i32
+================================
+Cause more inline with elisp convention and simpler to generate.
+
+-1- thrift-gen-tutorial-Calculator should be thrift-gen-tutorial-Calculator-client
+==================================================================================
+Cause, there is the processor, the server...
+
+0- write-args fun should write fun
+==================================
+Indeed, it writes the whole message.
+
 1- The binary protocol should support doubles
 =============================================
 Not that simple. Emacs does not support double.

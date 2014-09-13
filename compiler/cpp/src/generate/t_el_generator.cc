@@ -899,17 +899,71 @@ void t_el_generator::generate_service(t_service* tservice) {
  * @param tservice The service to generate a header definition for
  */
 void t_el_generator::generate_service_helpers(t_service* tservice) {
+  string svc_name =  get_real_el_module(tservice->get_program()) + "-" + tservice->get_name();
+
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::iterator f_iter;
 
   f_service_ <<
-    "# HELPER FUNCTIONS AND STRUCTURES" << endl;
+    "# HELPER FUNCTIONS AND STRUCTURES\n\n" << endl;
 
+  // Encoders/decoders definitions
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
-    t_struct* ts = (*f_iter)->get_arglist();
-    generate_el_struct_definition(f_service_, ts, false);
-    generate_el_function_helpers(*f_iter);
+
+    string fun_name = (*f_iter)->get_name();
+    vector<t_field*>::const_iterator fld_iter;
+
+    // 'Write' helper function
+    indent(f_service_) <<
+      "(defun thrift-gen-" << svc_name << "-write-" << fun_name << " (protocol seqid args)" << endl;
+    indent_up();
+    indent(f_service_) <<
+      "\"Send " << fun_name << " request.\"" << endl;
+    indent(f_service_) <<
+      "(thrift-protocol-writeMessageBegin protocol" << endl;
+    indent(f_service_) <<
+      "                                   \"" << fun_name << "\"" << endl;
+    indent(f_service_) <<
+      "                                   (thrift-constant-message-type 'call)" << endl;
+    indent(f_service_) <<
+      "                                   seqid)" << endl;
+    indent(f_service_) <<
+      "(thrift-protocol-writeStructBegin protocol \"" << fun_name << "_args)\""<< endl;
+
+    // Encode each argument
+    t_struct* arg_struct = (*f_iter)->get_arglist();
+    const vector<t_field*>& fields = arg_struct->get_members();
+    vector<t_field*>::const_iterator field_iter;
+    for(field_iter=fields.begin(); field_iter!=fields.end(); ++field_iter){
+      string arg_name = (*field_iter)->get_name();
+      string arg_type = (*field_iter)->get_type()->get_name();
+      string capitalized_arg_type = arg_type;
+      capitalized_arg_type[0] = toupper(capitalized_arg_type[0]);
+      int32_t arg_key = (*field_iter)->get_key();
+      indent(f_service_) << ";; argument: " << arg_name << endl;
+      indent(f_service_) <<
+	"(thrift-protocol-writeFieldBegin protocol" << endl;
+      indent(f_service_) <<
+	"                                 \"" << arg_name << "\"" << endl;
+      indent(f_service_) <<
+	"                                 (thrift-constant-type '" << arg_type << ")" << endl;
+      indent(f_service_) <<
+	"                                 " << arg_key << ")" << endl;
+      indent(f_service_) <<
+	"(thrift-protocol-write-" << arg_type << " protocol (plist-get args :" << arg_name << "))" << endl;
+      indent(f_service_) <<
+	"(thrift-protocol-writeFieldEnd protocol))" << endl;
+    }
+
+    indent(f_service_) <<
+      "(thrift-protocol-writeFieldStop protocol)" << endl;
+    indent(f_service_) <<
+      "(thrift-protocol-writeStructEnd protocol)" << endl;
+    indent(f_service_) <<
+      "(thrift-protocol-writeMessageEnd protocol))\n\n" << endl;
+    indent_down();
   }
+
 }
 
 /**
@@ -978,153 +1032,15 @@ void t_el_generator::generate_service_client(t_service* tservice) {
   vector<t_function*> functions = tservice->get_functions();
   vector<t_function*>::const_iterator f_iter;
   for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
-    string funname = (*f_iter)->get_name();
-    f_service_ << indent() << "\n                '(" << funname << endl;
-    f_service_ << indent() << "                (thrift-gen-" << svc_name << "-write-" << funname << "-args" << endl;
-    f_service_ << indent() << "                 thrift-gen-" << svc_name << "-read-" << funname << "-result)";
+    string fun_name = (*f_iter)->get_name();
+    f_service_ << indent() << "\n                '(" << fun_name << endl;
+    f_service_ << indent() << "                (thrift-gen-" << svc_name << "-write-" << fun_name << "-args" << endl;
+    f_service_ << indent() << "                 thrift-gen-" << svc_name << "-read-" << fun_name << "-result)";
   }
   f_service_ << ")))\n" << indent() << "svc)\n" << endl;
 
-
-  f_service_ << endl << "\ntodo - todo - todo - todo - todo - todo - todo\n" << endl;
-
-  // Encoders/decoders definitions
-  for (f_iter = functions.begin(); f_iter != functions.end(); ++f_iter) {
-    t_struct* arg_struct = (*f_iter)->get_arglist();
-    const vector<t_field*>& fields = arg_struct->get_members();
-    vector<t_field*>::const_iterator fld_iter;
-    string funname = (*f_iter)->get_name();
-
-    // Open function
-    indent(f_service_) <<
-      "def " << function_signature(*f_iter) << ":" << endl;
-    indent_up();
-    generate_elisp_docstring(f_service_, (*f_iter));
-
-    indent(f_service_) <<
-      "self.send_" << funname << "(";
-
-    bool first = true;
-    for (fld_iter = fields.begin(); fld_iter != fields.end(); ++fld_iter) {
-      if (first) {
-	first = false;
-      } else {
-	f_service_ << ", ";
-      }
-      f_service_ << (*fld_iter)->get_name();
-    }
-
-    f_service_ << ")" << endl;
-
-    if (!(*f_iter)->is_oneway()) {
-	if (!(*f_iter)->get_returntype()->is_void()) {
-	  f_service_ << "return ";
-	}
-	f_service_ <<
-	  "self.recv_" << funname << "()" << endl;
-    }
-    indent_down();
-    f_service_ << endl;
-
-    indent(f_service_) <<
-      "def send_" << function_signature(*f_iter) << ":" << endl;
-
-    indent_up();
-
-    std::string argsname = (*f_iter)->get_name() + "_args";
-
-    // Serialize the request header
-    f_service_ <<
-      indent() << "self._oprot.writeMessageBegin('" << (*f_iter)->get_name() << "', TMessageType.CALL, self._seqid)" << endl;
-
-    f_service_ <<
-      indent() << "args = " << argsname << "()" << endl;
-
-    for (fld_iter = fields.begin(); fld_iter != fields.end(); ++fld_iter) {
-      f_service_ <<
-	indent() << "args." << (*fld_iter)->get_name() << " = " << (*fld_iter)->get_name() << endl;
-    }
-
-    // Write to the stream
-    f_service_ <<
-      indent() << "args.write(self._oprot)" << endl <<
-      indent() << "self._oprot.writeMessageEnd()" << endl <<
-      indent() << "self._oprot.trans.flush()" << endl;
-
-    indent_down();
-
-    if (!(*f_iter)->is_oneway()) {
-      std::string resultname = (*f_iter)->get_name() + "_result";
-      // Open function
-      f_service_ <<
-	endl;
-      t_struct noargs(program_);
-      t_function recv_function((*f_iter)->get_returntype(),
-			       string("recv_") + (*f_iter)->get_name(),
-			       &noargs);
-      f_service_ <<
-	indent() << "def " << function_signature(&recv_function) << ":" << endl;
-
-      indent_up();
-
-      // TODO(mcslee): Validate message reply here, seq ids etc.
-
-      f_service_ <<
-	indent() << "(fname, mtype, rseqid) = self._iprot.readMessageBegin()" << endl;
-
-      f_service_ <<
-	indent() << "if mtype == TMessageType.EXCEPTION:" << endl <<
-	indent() << "  x = TApplicationException()" << endl;
-
-      f_service_ <<
-	indent() << "  x.read(self._iprot)" << endl <<
-	indent() << "  self._iprot.readMessageEnd()" << endl <<
-	indent() << "  raise x" << endl <<
-	indent() << "result = " << resultname << "()" << endl <<
-	indent() << "result.read(self._iprot)" << endl <<
-	indent() << "self._iprot.readMessageEnd()" << endl;
-
-      // Careful, only return _result if not a void function
-      if (!(*f_iter)->get_returntype()->is_void()) {
-	f_service_ <<
-	  indent() << "if result.success is not None:" << endl;
-	f_service_ <<
-	  indent() << "  return result.success" << endl;
-      }
-
-      t_struct* xs = (*f_iter)->get_xceptions();
-      const std::vector<t_field*>& xceptions = xs->get_members();
-      vector<t_field*>::const_iterator x_iter;
-      for (x_iter = xceptions.begin(); x_iter != xceptions.end(); ++x_iter) {
-	f_service_ <<
-	  indent() << "if result." << (*x_iter)->get_name() << " is not None:" << endl;
-	f_service_ <<
-	  indent() << "  raise result." << (*x_iter)->get_name() << "" << endl;
-      }
-
-      // Careful, only return _result if not a void function
-      if ((*f_iter)->get_returntype()->is_void()) {
-	f_service_ <<
-	  indent() << "return" << endl;
-      } else {
-	f_service_ <<
-	  indent() << "raise TApplicationException(TApplicationException.MISSING_RESULT, \"" << (*f_iter)->get_name() << " failed: unknown result\");" << endl;
-      }
-
-      // Close function
-      indent_down();
-      f_service_ << endl;
-    }
-  }
-
-
-  generate_elisp_docstring(f_service_, tservice);
-
-
-  indent_down();
-  f_service_ <<
-    endl;
 }
+
 
 /**
  * Generates a command line tool for making remote requests
@@ -1981,9 +1897,7 @@ string t_el_generator::render_field_default_value(t_field* tfield) {
 string t_el_generator::function_signature(t_function* tfunction) {
   vector<string> pre;
   vector<string> post;
-  string signature = tfunction->get_name() + "(";
-
-  pre.push_back("self");
+  string signature = "(" + tfunction->get_name();
 
   signature += argument_list(tfunction->get_arglist(), &pre, &post) + ")";
   return signature;
@@ -2004,7 +1918,7 @@ string t_el_generator::argument_list(t_struct* tstruct, vector<string> *pre, vec
       if (first) {
 	first = false;
       } else {
-	result += ", ";
+	result += " ";
       }
       result += *s_iter;
     }
@@ -2013,7 +1927,7 @@ string t_el_generator::argument_list(t_struct* tstruct, vector<string> *pre, vec
     if (first) {
       first = false;
     } else {
-      result += ", ";
+      result += " ";
     }
     result += (*f_iter)->get_name();
   }
@@ -2022,7 +1936,7 @@ string t_el_generator::argument_list(t_struct* tstruct, vector<string> *pre, vec
       if (first) {
 	first = false;
       } else {
-	result += ", ";
+	result += " ";
       }
       result += *s_iter;
     }
