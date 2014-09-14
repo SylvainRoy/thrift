@@ -37,6 +37,9 @@ Here is an example from nodejs client:
 For the time, being, I just use the int value.
 Not very nice...
 
+7- Support for oneway function
+==============================
+
 
 
 
