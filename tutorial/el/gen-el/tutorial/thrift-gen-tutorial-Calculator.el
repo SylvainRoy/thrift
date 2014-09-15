@@ -7,13 +7,15 @@
 ;;
 
 (require 'thrift)
-(require 'thrift-gen-tutorial-ttypes)
 (require 'thrift-service)
+(require 'thrift-gen-tutorial-types)
+(require 'thrift-gen-tutorial-constants)
+(require 'thrift-gen-shared-SharedService)
 
 
-(defclass thrift-gen-tutorial-Calculator (thrift-service)
+(defclass thrift-gen-tutorial-Calculator (thrift-gen-shared-SharedService)
   ()
-  "Generated class for the tutorial/Calculator service.")
+  "Generated class for the tutorial.Calculator service.")
 
 
 (defmethod initialize-instance ((svc thrift-gen-tutorial-Calculator) &rest slots)

@@ -112,4 +112,4 @@
   (list res-what res-why))
 
 
-(provide 'thrift-gen-tutorial-ttypes)
+(provide 'thrift-gen-tutorial-types)
