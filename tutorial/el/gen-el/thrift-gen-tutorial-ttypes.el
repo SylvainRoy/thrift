@@ -9,6 +9,34 @@
 (require 'thrift)
 
 
+;;
+;; You can define enums, which are just 32 bit integers. Values are optional
+;; and start at 1 if not supplied, C style again.
+;;
+
+(defun thrift-gen-tutorial-Operation-to-int (operation)
+  (cond ((eq operation 'add)       1)
+	((eq operation 'substract) 2)
+	((eq operation 'multiply)  3)
+	((eq operation 'divide)    4)))
+
+(defun thrift-gen-tutorial-int-to-Operation (int)
+  (cond ((eq int '1) 'add)
+	((eq int '2) 'substract)
+	((eq int '3) 'multiply)
+	((eq int '4) 'divide)))
+
+
+;;
+;; Structs are the basic complex data structures. They are comprised of fields
+;; which each have an integer identifier, a type, a symbolic name, and an
+;; optional default value.
+;;
+;; Fields can be declared "optional", which ensures they will not be included
+;; in the serialized output if they aren't set.  Note that this requires some
+;; manual management in some languages.
+;;
+
 (defun thrift-gen-tutorial-Calculator-write-Work (protocol work)
   "Write Work struct."
   (thrift-protocol-writeStructBegin protocol "Work")
@@ -34,7 +62,9 @@
 				     "op"
 				     (thrift-constant-type 'i32)
 				     3)
-    (thrift-protocol-writeI32 protocol (plist-get work :op))
+    (message "first")
+    (thrift-protocol-writeI32 protocol (thrift-gen-tutorial-Operation-to-int (plist-get work :op)))
+    (message "second")
     (thrift-protocol-writeFieldEnd protocol))
   ;; parameter: comment
   (when (plist-get work :comment)
@@ -47,6 +77,10 @@
   (thrift-protocol-writeFieldStop protocol)
   (thrift-protocol-writeStructEnd protocol))
 
+
+;;
+;; Structs can also be exceptions, if they are nasty.
+;;
 
 (defun thrift-gen-tutorial-Calculator-read-InvalidOperation (protocol)
   "Read InvalidOperation Exception."
