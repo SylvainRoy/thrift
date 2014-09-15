@@ -39,43 +39,41 @@
 
 (defun thrift-gen-tutorial-Calculator-write-Work (protocol work)
   "Write Work struct."
-  (thrift-protocol-writeStructBegin protocol "Work")
+  (thrift-protocol-write-struct-begin protocol "Work")
   ;; parameter: num1
   (when (plist-get work :num1)
-    (thrift-protocol-writeFieldBegin protocol
-				     "num1"
-				     (thrift-constant-type 'i32)
-				     1)
-    (thrift-protocol-writeI32 protocol (plist-get work :num1))
-    (thrift-protocol-writeFieldEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "num1"
+				       (thrift-constant-type 'i32)
+				       1)
+    (thrift-protocol-write-i32 protocol (plist-get work :num1))
+    (thrift-protocol-write-field-end protocol))
   ;; parameter: num2
   (when (plist-get work :num2)
-    (thrift-protocol-writeFieldBegin protocol
-				     "num2"
-				     (thrift-constant-type 'i32)
-				     2)
-    (thrift-protocol-writeI32 protocol (plist-get work :num2))
-    (thrift-protocol-writeFieldEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "num2"
+				       (thrift-constant-type 'i32)
+				       2)
+    (thrift-protocol-write-i32 protocol (plist-get work :num2))
+    (thrift-protocol-write-field-end protocol))
   ;; parameter: op
   (when (plist-get work :op)
-    (thrift-protocol-writeFieldBegin protocol
-				     "op"
-				     (thrift-constant-type 'i32)
-				     3)
-    (message "first")
-    (thrift-protocol-writeI32 protocol (thrift-gen-tutorial-Operation-to-int (plist-get work :op)))
-    (message "second")
-    (thrift-protocol-writeFieldEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "op"
+				       (thrift-constant-type 'i32)
+				       3)
+    (thrift-protocol-write-i32 protocol (thrift-gen-tutorial-Operation-to-int (plist-get work :op)))
+    (thrift-protocol-write-field-end protocol))
   ;; parameter: comment
   (when (plist-get work :comment)
-    (thrift-protocol-writeFieldBegin protocol
-				     "comment"
-				     (thrift-constant-type 'string)
-				     4)
-    (thrift-protocol-writeString protocol (plist-get work :comment))
-    (thrift-protocol-writeFieldEnd protocol))
-  (thrift-protocol-writeFieldStop protocol)
-  (thrift-protocol-writeStructEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "comment"
+				       (thrift-constant-type 'string)
+				       4)
+    (thrift-protocol-write-string protocol (plist-get work :comment))
+    (thrift-protocol-write-field-end protocol))
+  (thrift-protocol-write-field-stop protocol)
+  (thrift-protocol-write-struct-end protocol))
 
 
 ;;
@@ -88,10 +86,10 @@
   (setq res-what nil)
   (setq res-why nil)
   ;; decode
-  (thrift-protocol-readStructBegin protocol)
+  (thrift-protocol-read-struct-begin protocol)
   (catch 'break
     (while t
-      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq r (thrift-protocol-read-field-begin protocol))
       (setq fname (pop r))
       (setq ftype (pop r))
       (setq fid (pop r))
@@ -99,16 +97,16 @@
 	  (throw 'break t))
       (cond ((equal fid 1)
 	     (if (equal ftype (thrift-constant-type 'i32))
-		 (setq res-what (thrift-protocol-readI32 protocol))
+		 (setq res-what (thrift-protocol-read-i32 protocol))
 	       (thrift-protocol-skip protocol ftype)))
 	    ((equal fid 2)
 	     (if (equal ftype (thrift-constant-type 'string))
-		 (setq res-string (thrift-protocol-readString protocol))
+		 (setq res-string (thrift-protocol-read-string protocol))
 	       (thrift-protocol-skip protocol ftype)))
 	    (t
 	     (thrift-protocol-skip protocol ftype)))
-      (thrift-protocol-readFieldEnd protocol)))
-  (thrift-protocol-readStructEnd protocol)
+      (thrift-protocol-read-field-end protocol)))
+  (thrift-protocol-read-struct-end protocol)
   (list res-what res-why))
 
 

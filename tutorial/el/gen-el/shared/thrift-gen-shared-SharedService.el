@@ -37,22 +37,22 @@
 
 (defun thrift-gen-shared-SharedService-write-getStruct (protocol seqid args)
   "Encode and send getStruct request."
-  (thrift-protocol-writeMessageBegin protocol
-				     "getStruct"
-				     (thrift-constant-message-type 'call)
-				     seqid)
-  (thrift-protocol-writeStructBegin protocol "getStruct_args)"
+  (thrift-protocol-write-message-begin protocol
+				       "getStruct"
+				       (thrift-constant-message-type 'call)
+				       seqid)
+  (thrift-protocol-write-struct-begin protocol "getStruct_args")
   ;; Encode key
   (when (plist-get args :key)
-    (thrift-protocol-writeFieldBegin protocol
-				     "key"
-				     (thrift-constant-type 'i32)
-				     1)
+    (thrift-protocol-write-field-begin protocol
+				       "key"
+				       (thrift-constant-type 'i32)
+				       1)
     (thrift-protocol-write-i32 protocol (plist-get args :key))
-    (thrift-protocol-writeFieldEnd protocol))
-  (thrift-protocol-writeFieldStop protocol)
-  (thrift-protocol-writeStructEnd protocol)
-  (thrift-protocol-writeMessageEnd protocol)))
+    (thrift-protocol-write-field-end protocol))
+  (thrift-protocol-write-field-stop protocol)
+  (thrift-protocol-write-struct-end protocol)
+  (thrift-protocol-write-message-end protocol))
 
 
 (defun thrift-gen-shared-SharedService-read-getStruct-result (protocol)
@@ -61,10 +61,10 @@
   (setq res-exception nil)
   (setq res-result nil)
   ;; Decode
-  (thrift-protocol-readStructBegin protocol)
+  (thrift-protocol-read-struct-begin protocol)
   (catch 'break
     (while t
-      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq r (thrift-protocol-read-field-begin protocol))
       (setq fname (pop r))
       (setq ftype (pop r))
       (setq fid (pop r))
@@ -76,8 +76,8 @@
 	       (thrift-protocol-skip protocol ftype)))
 	    (t
 	     (thrift-protocol-skip protocol ftype)))
-      (thrift-protocol-readFieldEnd protocol)))
-  (thrift-protocol-readStructEnd protocol)
+      (thrift-protocol-read-field-end protocol)))
+  (thrift-protocol-read-struct-end protocol)
   (list res-error res-result))
 
 

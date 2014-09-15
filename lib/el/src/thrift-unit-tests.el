@@ -1,7 +1,7 @@
 ;;; unittest.el ---Unit test Thrift elisp implementation.
 
 ;; To run the test in batch mode:
-;;  emacs -batch -l ert -l unittest.el -f ert-run-tests-batch-and-exit
+;; emacs -batch -l ert -l thrift-unit-tests.el -f ert-run-tests-batch-and-exit
 
 ;; To run the test from emacs:
 ;;  M-x ert RET t RET
@@ -18,8 +18,6 @@
 ;; Init transport and protocol
 (setq transport (thrift-string-transport "TestTrans"))
 (setq protocol (thrift-binary-protocol "TestProt" :transport transport))
-
-
 
 ;;; Testing of the 'string' transport ;;;
 
@@ -41,7 +39,6 @@
   (should (equal (get-sent-and-reset transport) "0123456789"))
   (should (equal (get-sent transport) ""))
   (should (equal (get-sent-and-reset transport) "")))
-
 
 
 ;;; Testing of the 'base' protocol ;;;
@@ -85,221 +82,220 @@
 
 ;;; Testing of the 'binary' protocol ;;;
 
-(ert-deftest thrift-binary-protocol-writeMessageBegin-test ()
-  "Tests the encoding of 'writeMessageBegin' using the thrift-binary-protocol."
-  (thrift-protocol-writeMessageBegin protocol "name" 33 44)
+(ert-deftest thrift-binary-protocol-write-message-begin-test ()
+  "Tests the encoding of 'write-message-begin' using the thrift-binary-protocol."
+  (thrift-protocol-write-message-begin protocol "name" 33 44)
   (should (equal (get-sent-and-reset transport)
 		 "\x80\x01\x00!\x00\x00\x00\x04name\x00\x00\x00,"))
-  (thrift-protocol-writeMessageBegin protocol "name" 1 2)
+  (thrift-protocol-write-message-begin protocol "name" 1 2)
   (should (equal (get-sent-and-reset transport)
 		 "\x80\x01\x00\x01\x00\x00\x00\x04name\x00\x00\x00\x02")))
 
-(ert-deftest thrift-binary-protocol-writeMessageEnd-test ()
-  "Tests the encoding of 'writeMessageEnd' using the thrift-binary-protocol."
-  (thrift-protocol-writeMessageEnd protocol)
+(ert-deftest thrift-binary-protocol-write-message-end-test ()
+  "Tests the encoding of 'write-message-end' using the thrift-binary-protocol."
+  (thrift-protocol-write-message-end protocol)
   (should (equal (get-sent-and-reset transport) "")))
 
-(ert-deftest thrift-binary-protocol-writeFieldBegin-test ()
-  "Tests the encoding of 'writeFieldBegin' using the thrift-binary-protocol."
-  (thrift-protocol-writeFieldBegin protocol "name" 1 2)
+(ert-deftest thrift-binary-protocol-write-field-begin-test ()
+  "Tests the encoding of 'write-field-begin' using the thrift-binary-protocol."
+  (thrift-protocol-write-field-begin protocol "name" 1 2)
   (should (equal (get-sent-and-reset transport) "\x01\x00\x02")))
 
-(ert-deftest thrift-binary-protocol-writeFieldStop-test ()
-  "Tests the encoding of 'writeFieldStop' using the thrift-binary-protocol."
-  (thrift-protocol-writeFieldStop protocol)
+(ert-deftest thrift-binary-protocol-write-field-stop-test ()
+  "Tests the encoding of 'write-field-stop' using the thrift-binary-protocol."
+  (thrift-protocol-write-field-stop protocol)
   (should (equal (get-sent-and-reset transport) "\x00")))
 
-(ert-deftest thrift-binary-protocol-writeMapBegin-test ()
-  "Tests the encoding of 'writeMapBegin' using the thrift-binary-protocol."
-  (thrift-protocol-writeMapBegin protocol 1 2 3)
+(ert-deftest thrift-binary-protocol-write-map-begin-test ()
+  "Tests the encoding of 'write-map-begin' using the thrift-binary-protocol."
+  (thrift-protocol-write-map-begin protocol 1 2 3)
   (should (equal (get-sent-and-reset transport) "\x01\x02\x00\x00\x00\x03")))
 
-(ert-deftest thrift-binary-protocol-writeMapEnd-test ()
+(ert-deftest thrift-binary-protocol-write-map-end-test ()
   nil)
 
-(ert-deftest thrift-binary-protocol-writeListBegin-test ()
+(ert-deftest thrift-binary-protocol-write-list-begin-test ()
   "Tests the encoding of Lists using the thrift-binary-protocol."
-  (thrift-protocol-writeListBegin protocol 1 2)
+  (thrift-protocol-write-list-begin protocol 1 2)
   (should (equal (get-sent-and-reset transport) "\x01\x00\x00\x00\x02")))
 
-(ert-deftest thrift-binary-protocol-writeListEnd-test ()
+(ert-deftest thrift-binary-protocol-write-list-end-test ()
   nil)
 
-(ert-deftest thrift-binary-protocol-writeSetBegin-test ()
+(ert-deftest thrift-binary-protocol-write-set-begin-test ()
   "Tests the encoding of Sets using the thrift-binary-protocol."
-  (thrift-protocol-writeSetBegin protocol 1 2)
+  (thrift-protocol-write-set-begin protocol 1 2)
   (should (equal (get-sent-and-reset transport) "\x01\x00\x00\x00\x02")))
 
-(ert-deftest thrift-binary-protocol-writeSetEnd-test ()
+(ert-deftest thrift-binary-protocol-write-set-end-test ()
   nil)
 
-(ert-deftest thrift-binary-protocol-writeBool-test ()
+(ert-deftest thrift-binary-protocol-write-bool-test ()
   "Tests the encoding of Bool using the thrift-binary-protocol."
   ;; Test encoding of bool=true
-  (thrift-protocol-writeBool protocol t)
+  (thrift-protocol-write-bool protocol t)
   (should (equal (get-sent-and-reset transport) "\x01"))
   ;; Test encoding of bool=false
-  (thrift-protocol-writeBool protocol nil)
+  (thrift-protocol-write-bool protocol nil)
   (should (equal (get-sent-and-reset transport) "\x00")))
 
-(ert-deftest thrift-binary-protocol-writeByte-test ()
+(ert-deftest thrift-binary-protocol-write-byte-test ()
   "Tests the encoding of Bytes using the thrift-binary-protocol."
-  (thrift-protocol-writeByte protocol 0)
+  (thrift-protocol-write-byte protocol 0)
   (should (equal (get-sent-and-reset transport) "\x00"))
-  (thrift-protocol-writeByte protocol -1)
+  (thrift-protocol-write-byte protocol -1)
   (should (equal (get-sent-and-reset transport) "\xff"))
-  (thrift-protocol-writeByte protocol 1)
+  (thrift-protocol-write-byte protocol 1)
   (should (equal (get-sent-and-reset transport) "\x01")))
 
-(ert-deftest thrift-binary-protocol-writeI16-test ()
+(ert-deftest thrift-binary-protocol-write-i16-test ()
   "Tests the encoding of i16 using the thrift-binary-protocol."
-  (thrift-protocol-writeI16 protocol 0)
+  (thrift-protocol-write-i16 protocol 0)
   (should (equal (get-sent-and-reset transport) "\x00\x00"))
-  (thrift-protocol-writeI16 protocol 1)
+  (thrift-protocol-write-i16 protocol 1)
   (should (equal (get-sent-and-reset transport) "\x00\x01"))
-  (thrift-protocol-writeI16 protocol -1)
+  (thrift-protocol-write-i16 protocol -1)
   (should (equal (get-sent-and-reset transport) "\xff\xff")))
 
-(ert-deftest thrift-binary-protocol-writeI32-test ()
+(ert-deftest thrift-binary-protocol-write-i32-test ()
   "Tests the encoding of i32 using the thrift-binary-protocol."
-  (thrift-protocol-writeI32 protocol 0)
+  (thrift-protocol-write-i32 protocol 0)
   (should (equal (get-sent-and-reset transport) "\x00\x00\x00\x00"))
-  (thrift-protocol-writeI32 protocol 1)
+  (thrift-protocol-write-i32 protocol 1)
   (should (equal (get-sent-and-reset transport) "\x00\x00\x00\x01"))
-  (thrift-protocol-writeI32 protocol -1)
+  (thrift-protocol-write-i32 protocol -1)
   (should (equal (get-sent-and-reset transport) "\xff\xff\xff\xff")))
 
-(ert-deftest thrift-binary-protocol-writeI64-test ()
+(ert-deftest thrift-binary-protocol-write-i64-test ()
   "Tests the encoding of i32 using the thrift-binary-protocol."
-  (thrift-protocol-writeI64 protocol 0)
+  (thrift-protocol-write-i64 protocol 0)
   (should (equal (get-sent-and-reset transport) "\x00\x00\x00\x00\x00\x00\x00\x00"))
-  (thrift-protocol-writeI64 protocol 1)
+  (thrift-protocol-write-i64 protocol 1)
   (should (equal (get-sent-and-reset transport) "\x00\x00\x00\x00\x00\x00\x00\x01"))
-  (thrift-protocol-writeI64 protocol -1)
+  (thrift-protocol-write-i64 protocol -1)
   (should (equal (get-sent-and-reset transport) "\xff\xff\xff\xff\xff\xff\xff\xff")))
 
-(ert-deftest thrift-binary-protocol-writeDouble-test ()
+(ert-deftest thrift-binary-protocol-write-double-test ()
   "todo"
   nil)
 
-(ert-deftest thrift-binary-protocol-writeString-test ()
+(ert-deftest thrift-binary-protocol-write-string-test ()
   "Tests the encoding of strings using the thrift-binary-protocol."
-  (thrift-protocol-writeString protocol "a")
+  (thrift-protocol-write-string protocol "a")
   (should (equal (get-sent-and-reset transport) (concat "\x00\x00\x00\x01" "a")))
-  (thrift-protocol-writeString protocol "bb")
+  (thrift-protocol-write-string protocol "bb")
   (should (equal (get-sent-and-reset transport) (concat "\x00\x00\x00\x02" "bb"))))
 
-(ert-deftest thrift-binary-protocol-readByte-test ()
+(ert-deftest thrift-binary-protocol-read-byte-test ()
   "Tests the decoding of Byte using the thrift-binary-protocol."
   (set-recv transport "\x00")
-  (should (equal (thrift-protocol-readByte protocol) 0))
+  (should (equal (thrift-protocol-read-byte protocol) 0))
   (set-recv transport "\x01\x02")
-  (should (equal (thrift-protocol-readByte protocol) 1))
-  (should (equal (thrift-protocol-readByte protocol) 2))
+  (should (equal (thrift-protocol-read-byte protocol) 1))
+  (should (equal (thrift-protocol-read-byte protocol) 2))
   (set-recv transport "\xFF")
-  (should (equal (thrift-protocol-readByte protocol) 255))
-)
+  (should (equal (thrift-protocol-read-byte protocol) 255))
+  )
 
-(ert-deftest thrift-binary-protocol-readI16-test ()
+(ert-deftest thrift-binary-protocol-read-i16-test ()
   "Tests the decoding of I16 using the thrift-binary-protocol."
   (set-recv transport "\x00\x00")
-  (should (equal (thrift-protocol-readI16 protocol) 0))
+  (should (equal (thrift-protocol-read-i16 protocol) 0))
   (set-recv transport "\x00\x01\x00\x02")
-  (should (equal (thrift-protocol-readI16 protocol) 1))
-  (should (equal (thrift-protocol-readI16 protocol) 2))
+  (should (equal (thrift-protocol-read-i16 protocol) 1))
+  (should (equal (thrift-protocol-read-i16 protocol) 2))
   (set-recv transport "\xFF\xFF")
-  (should (equal (thrift-protocol-readI16 protocol) 65535))
-)
+  (should (equal (thrift-protocol-read-i16 protocol) 65535))
+  )
 
-(ert-deftest thrift-binary-protocol-readI32-test ()
+(ert-deftest thrift-binary-protocol-read-i32-test ()
   "Tests the decoding of I32 using the thrift-binary-protocol."
   (set-recv transport "\x00\x00\x00\x00")
-  (should (equal (thrift-protocol-readI32 protocol) 0))
+  (should (equal (thrift-protocol-read-i32 protocol) 0))
   (set-recv transport "\x00\x00\x00\x01\x00\x00\x00\x02")
-  (should (equal (thrift-protocol-readI32 protocol) 1))
-  (should (equal (thrift-protocol-readI32 protocol) 2))
+  (should (equal (thrift-protocol-read-i32 protocol) 1))
+  (should (equal (thrift-protocol-read-i32 protocol) 2))
   (set-recv transport "\x00\x00\xFF\xFF")
-  (should (equal (thrift-protocol-readI32 protocol) 65535))
+  (should (equal (thrift-protocol-read-i32 protocol) 65535))
   (set-recv transport "\x1F\xFF\xFF\xFF")
-  (should (equal (thrift-protocol-readI32 protocol) 536870911))
-)
+  (should (equal (thrift-protocol-read-i32 protocol) 536870911))
+  )
 
-(ert-deftest thrift-binary-protocol-readI64-test ()
+(ert-deftest thrift-binary-protocol-read-i64-test ()
   "Tests the decoding of I64 using the thrift-binary-protocol."
   (set-recv transport "\x00\x00\x00\x00\x00\x00\x00\x00")
-  (should (equal (thrift-protocol-readI64 protocol) 0))
+  (should (equal (thrift-protocol-read-i64 protocol) 0))
   (set-recv transport
 	    "\x00\x00\x00\x00\x00\x00\x00\x01\x00\x00\x00\x00\x00\x00\x00\x02")
-  (should (equal (thrift-protocol-readI64 protocol) 1))
-  (should (equal (thrift-protocol-readI64 protocol) 2))
+  (should (equal (thrift-protocol-read-i64 protocol) 1))
+  (should (equal (thrift-protocol-read-i64 protocol) 2))
   (set-recv transport "\x00\x00\x00\x00\x00\x00\xFF\xFF")
-  (should (equal (thrift-protocol-readI64 protocol) 65535))
+  (should (equal (thrift-protocol-read-i64 protocol) 65535))
   (set-recv transport "\x00\x00\x00\x00\x1F\xFF\xFF\xFF")
-  (should (equal (thrift-protocol-readI64 protocol) 536870911))
-)
+  (should (equal (thrift-protocol-read-i64 protocol) 536870911))
+  )
 
-(ert-deftest thrift-binary-protocol-readBool-test ()
+(ert-deftest thrift-binary-protocol-read-bool-test ()
   "Tests the decoding of Bool using the thrift-binary-protocol."
   (set-recv transport "\x00")
-  (should (equal (thrift-protocol-readBool protocol) nil))
+  (should (equal (thrift-protocol-read-bool protocol) nil))
   (set-recv transport "\x01")
-  (should (equal (thrift-protocol-readBool protocol) t)))
+  (should (equal (thrift-protocol-read-bool protocol) t)))
 
-(ert-deftest thrift-binary-protocol-readSetBegin-test ()
-  "Tests the decoding of readSetBegin using the thrift-binary-protocol."
+(ert-deftest thrift-binary-protocol-read-set-begin-test ()
+  "Tests the decoding of read-set-begin using the thrift-binary-protocol."
   (set-recv transport "\x01\x00\x00\x00\x02")
-  (should (equal (thrift-protocol-readSetBegin protocol) (list 1 2))))
+  (should (equal (thrift-protocol-read-set-begin protocol) (list 1 2))))
 
-(ert-deftest thrift-binary-protocol-readListBegin-test ()
-  "Tests the decoding of readListBegin using the thrift-binary-protocol."
+(ert-deftest thrift-binary-protocol-read-list-begin-test ()
+  "Tests the decoding of read-list-begin using the thrift-binary-protocol."
   (set-recv transport "\x01\x00\x00\x00\x02")
-  (should (equal (thrift-protocol-readListBegin protocol) (list 1 2))))
+  (should (equal (thrift-protocol-read-list-begin protocol) (list 1 2))))
 
-(ert-deftest thrift-binary-protocol-readMapBegin-test ()
-  "Tests the decoding of readMapBegin using the thrift-binary-protocol."
+(ert-deftest thrift-binary-protocol-read-map-begin-test ()
+  "Tests the decoding of read-map-begin using the thrift-binary-protocol."
   (set-recv transport "\x01\x02\x00\x00\x00\x03")
-  (should (equal (thrift-protocol-readMapBegin protocol) (list 1 2 3))))
+  (should (equal (thrift-protocol-read-map-begin protocol) (list 1 2 3))))
 
-(ert-deftest thrift-binary-protocol-readFieldBegin-test ()
-  "Tests the decoding of readFieldBegin using the thrift-binary-protocol."
+(ert-deftest thrift-binary-protocol-read-field-begin-test ()
+  "Tests the decoding of read-field-begin using the thrift-binary-protocol."
   (set-recv transport "\x01\x00\x02")
-  (should (equal (thrift-protocol-readFieldBegin protocol) (list nil 1 2)))
+  (should (equal (thrift-protocol-read-field-begin protocol) (list nil 1 2)))
   (set-recv transport "\x00\x00\x02")
-  (should (equal (thrift-protocol-readFieldBegin protocol) (list nil 0 0)))
+  (should (equal (thrift-protocol-read-field-begin protocol) (list nil 0 0)))
   (set-recv transport "\x00\x00\x00")
-  (should (equal (thrift-protocol-readFieldBegin protocol) (list nil 0 0))))
+  (should (equal (thrift-protocol-read-field-begin protocol) (list nil 0 0))))
 
-(ert-deftest thrift-binary-protocol-readString-test ()
-  "Tests the decoding of readString using the thrift-binary-protocol."
+(ert-deftest thrift-binary-protocol-read-string-test ()
+  "Tests the decoding of read-string using the thrift-binary-protocol."
   (set-recv transport (concat "\x00\x00\x00\x01" "a"))
-  (should (equal (thrift-protocol-readString protocol) "a"))
+  (should (equal (thrift-protocol-read-string protocol) "a"))
   (set-recv transport (concat "\x00\x00\x00\x02" "bb"))
-  (should (equal (thrift-protocol-readString protocol) "bb")))
+  (should (equal (thrift-protocol-read-string protocol) "bb")))
 
-(ert-deftest thrift-binary-protocol-readMessageBegin-test ()
-  "Tests the decoding of readMapBegin using the thrift-binary-protocol."
+(ert-deftest thrift-binary-protocol-read-message-begin-test ()
+  "Tests the decoding of read-map-begin using the thrift-binary-protocol."
   (set-recv transport (concat "\x80\x01\x00\x01"
 			      "\x00\x00\x00\x04"
 			      "name"
 			      "\x00\x00\x00\x02"))
-  (should (equal (thrift-protocol-readMessageBegin protocol)
+  (should (equal (thrift-protocol-read-message-begin protocol)
 		 (list "name" 1 2)))
   (set-recv transport (concat "\x80\x01\x00" "!"
 			      "\x00\x00\x00\x04"
 			      "name"
 			      "\x00\x00\x00" ","))
-  (should (equal (thrift-protocol-readMessageBegin protocol)
+  (should (equal (thrift-protocol-read-message-begin protocol)
 		 (list "name" 33 44)))
   (set-recv transport (concat "\x00\x00\x00\x04"
 			      "name"
 			      "\x01"
 			      "\x00\x00\x00\x02"))
-  (should (equal (thrift-protocol-readMessageBegin protocol)
+  (should (equal (thrift-protocol-read-message-begin protocol)
 		 (list "name" 1 2)))
   (set-recv transport (concat "\x00\x00\x00\x04"
 			      "name"
 			      "!"
 			      "\x00\x00\x00" ","))
-  (should (equal (thrift-protocol-readMessageBegin protocol)
-		 (list "name" 33 44)))
-)
+  (should (equal (thrift-protocol-read-message-begin protocol)
+		 (list "name" 33 44))))

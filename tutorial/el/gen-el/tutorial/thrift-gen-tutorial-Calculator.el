@@ -27,71 +27,71 @@
 	functions
 	(append (oref svc functions)
 		'(ping
-		   (thrift-gen-tutorial-Calculator-write-ping-args
-		    thrift-gen-tutorial-Calculator-read-ping-result)
+		  (thrift-gen-tutorial-Calculator-write-ping-args
+		   thrift-gen-tutorial-Calculator-read-ping-result)
 		  add
-		   (thrift-gen-tutorial-Calculator-write-add-args
-		    thrift-gen-tutorial-Calculator-read-add-result)
+		  (thrift-gen-tutorial-Calculator-write-add-args
+		   thrift-gen-tutorial-Calculator-read-add-result)
 		  calculate
-		   (thrift-gen-tutorial-Calculator-write-calculate-args
-		    thrift-gen-tutorial-Calculator-read-calculate-result)))))
+		  (thrift-gen-tutorial-Calculator-write-calculate-args
+		   thrift-gen-tutorial-Calculator-read-calculate-result)))))
 
 
 (defun thrift-gen-tutorial-Calculator-write-ping-args (protocol seqid args)
   "Send ping request."
-  (thrift-protocol-writeMessageBegin protocol
-				     "ping"
-				     (thrift-constant-message-type 'call)
-				     seqid)
-  (thrift-protocol-writeStructBegin protocol "ping_args")
-  (thrift-protocol-writeFieldStop protocol)
-  (thrift-protocol-writeStructEnd protocol)
-  (thrift-protocol-writeMessageEnd protocol))
+  (thrift-protocol-write-message-begin protocol
+				       "ping"
+				       (thrift-constant-message-type 'call)
+				       seqid)
+  (thrift-protocol-write-struct-begin protocol "ping_args")
+  (thrift-protocol-write-field-stop protocol)
+  (thrift-protocol-write-struct-end protocol)
+  (thrift-protocol-write-message-end protocol))
 
 
 (defun thrift-gen-tutorial-Calculator-read-ping-result (protocol)
   "Decode content of ping response."
-  (thrift-protocol-readStructBegin protocol)
+  (thrift-protocol-read-struct-begin protocol)
   (catch 'break
     (while t
-      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq r (thrift-protocol-read-field-begin protocol))
       (setq fname (pop r))
       (setq ftype (pop r))
       (setq fid (pop r))
-    (if (equal ftype (thrift-constant-type 'stop))
-	(throw 'break t)
-      (thrift-protocol-skip protocol ftype))
-    (thrift-protocol-readFieldEnd protocol)))
-  (thrift-protocol-readStructEnd protocol)
+      (if (equal ftype (thrift-constant-type 'stop))
+	  (throw 'break t)
+	(thrift-protocol-skip protocol ftype))
+      (thrift-protocol-read-field-end protocol)))
+  (thrift-protocol-read-struct-end protocol)
   (list nil nil))
 
 
 (defun thrift-gen-tutorial-Calculator-write-add-args (protocol seqid args)
   "Send add request."
-  (thrift-protocol-writeMessageBegin protocol
-				     "add"
-				     (thrift-constant-message-type 'call)
-				     seqid)
-  (thrift-protocol-writeStructBegin protocol "add_args")
+  (thrift-protocol-write-message-begin protocol
+				       "add"
+				       (thrift-constant-message-type 'call)
+				       seqid)
+  (thrift-protocol-write-struct-begin protocol "add_args")
   ;; parameter: num2
   (when (plist-get args :num1)
-    (thrift-protocol-writeFieldBegin protocol
-				     "num1"
-				     (thrift-constant-type 'i32)
-				     1)
-    (thrift-protocol-writeI32 protocol (plist-get args :num1))
-    (thrift-protocol-writeFieldEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "num1"
+				       (thrift-constant-type 'i32)
+				       1)
+    (thrift-protocol-write-i32 protocol (plist-get args :num1))
+    (thrift-protocol-write-field-end protocol))
   ;; parameter: num2
   (when (plist-get args :num2)
-    (thrift-protocol-writeFieldBegin protocol
-				     "num2"
-				     (thrift-constant-type 'i32)
-				     2)
-    (thrift-protocol-writeI32 protocol (plist-get args :num2))
-    (thrift-protocol-writeFieldEnd protocol))
-  (thrift-protocol-writeFieldStop protocol)
-  (thrift-protocol-writeStructEnd protocol)
-  (thrift-protocol-writeMessageEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "num2"
+				       (thrift-constant-type 'i32)
+				       2)
+    (thrift-protocol-write-i32 protocol (plist-get args :num2))
+    (thrift-protocol-write-field-end protocol))
+  (thrift-protocol-write-field-stop protocol)
+  (thrift-protocol-write-struct-end protocol)
+  (thrift-protocol-write-message-end protocol))
 
 
 (defun thrift-gen-tutorial-Calculator-read-add-result (protocol)
@@ -100,10 +100,10 @@
   (setq res-error nil)
   (setq res-result nil)
   ;; decode
-  (thrift-protocol-readStructBegin protocol)
+  (thrift-protocol-read-struct-begin protocol)
   (catch 'break
     (while t
-      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq r (thrift-protocol-read-field-begin protocol))
       (setq fname (pop r))
       (setq ftype (pop r))
       (setq fid (pop r))
@@ -111,40 +111,40 @@
 	  (throw 'break t))
       (if (equal fid 0)
 	  (if (equal ftype (thrift-constant-type 'i32))
-	      (setq res-result (thrift-protocol-readI32 protocol))
+	      (setq res-result (thrift-protocol-read-i32 protocol))
 	    (thrift-protocol-skip protocol ftype))
 	(thrift-protocol-skip protocol ftype))
-      (thrift-protocol-readFieldEnd protocol)))
-  (thrift-protocol-readStructEnd protocol)
+      (thrift-protocol-read-field-end protocol)))
+  (thrift-protocol-read-struct-end protocol)
   (list res-error res-result))
 
 
 (defun thrift-gen-tutorial-Calculator-write-calculate-args (protocol seqid args)
   "Send calculate request."
-  (thrift-protocol-writeMessageBegin protocol
-				     "calculate"
-				     (thrift-constant-message-type 'call)
-				     seqid)
-  (thrift-protocol-writeStructBegin protocol "calculate_args")
+  (thrift-protocol-write-message-begin protocol
+				       "calculate"
+				       (thrift-constant-message-type 'call)
+				       seqid)
+  (thrift-protocol-write-struct-begin protocol "calculate_args")
   ;; parameter: logid
   (when (plist-get args :logid)
-    (thrift-protocol-writeFieldBegin protocol
-				     "logid"
-				     (thrift-constant-type 'i32)
-				     1)
-    (thrift-protocol-writeI32 protocol (plist-get args :logid))
-    (thrift-protocol-writeFieldEnd protocol))
+    (thrift-protocol-write-field-begin protocol
+				       "logid"
+				       (thrift-constant-type 'i32)
+				       1)
+    (thrift-protocol-write-i32 protocol (plist-get args :logid))
+    (thrift-protocol-write-field-end protocol))
   ;; parameter: w
   (when (plist-get args :w)
-    (thrift-protocol-writeFieldBegin protocol
-				     "w"
-				     (thrift-constant-type 'struct)
-				     2)
+    (thrift-protocol-write-field-begin protocol
+				       "w"
+				       (thrift-constant-type 'struct)
+				       2)
     (thrift-gen-tutorial-Calculator-write-Work protocol (plist-get args :w))
-    (thrift-protocol-writeFieldEnd protocol))
-  (thrift-protocol-writeFieldStop protocol)
-  (thrift-protocol-writeStructEnd protocol)
-  (thrift-protocol-writeMessageEnd protocol))
+    (thrift-protocol-write-field-end protocol))
+  (thrift-protocol-write-field-stop protocol)
+  (thrift-protocol-write-struct-end protocol)
+  (thrift-protocol-write-message-end protocol))
 
 
 (defun thrift-gen-tutorial-Calculator-read-calculate-result (protocol)
@@ -153,10 +153,10 @@
   (setq res-error nil)
   (setq res-result nil)
   ;; Decode
-  (thrift-protocol-readStructBegin protocol)
+  (thrift-protocol-read-struct-begin protocol)
   (catch 'break
     (while t
-      (setq r (thrift-protocol-readFieldBegin protocol))
+      (setq r (thrift-protocol-read-field-begin protocol))
       (setq fname (pop r))
       (setq ftype (pop r))
       (setq fid (pop r))
@@ -164,7 +164,7 @@
 	  (throw 'break t))
       (cond ((equal fid 0) ; Normal result received
 	     (if (equal ftype (thrift-constant-type 'i32))
-		 (setq res-result (thrift-protocol-readI32 protocol))
+		 (setq res-result (thrift-protocol-read-i32 protocol))
 	       (thrift-protocol-skip protocol ftype)))
 	    ((equal fid 1) ; InvalidOperation exception received
 	     (if (equal ftype (thrift-constant-type 'struct))
@@ -172,8 +172,8 @@
 	       (thrift-protocol-skip protocol ftype)))
 	    (t
 	     (thrift-protocol-skip protocol ftype)))
-      (thrift-protocol-readFieldEnd protocol)))
-  (thrift-protocol-readStructEnd protocol)
+      (thrift-protocol-read-field-end protocol)))
+  (thrift-protocol-read-struct-end protocol)
   (list res-error res-result))
 
 

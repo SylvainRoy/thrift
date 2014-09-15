@@ -58,7 +58,7 @@
 (defmethod thrift-service-recv ((service thrift-service))
   "Decode the header of an incoming reply and call the associated decoder."
   ;; Decode message header
-  (setq header (thrift-protocol-readMessageBegin (oref service protocol)))
+  (setq header (thrift-protocol-read-message-begin (oref service protocol)))
   (setq name (pop header))
   (setq type (pop header))
   (setq seqid (pop header))
