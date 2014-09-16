@@ -7,7 +7,6 @@
 ;;
 
 (require 'thrift)
-(require 'thrift-service)
 (require 'thrift-gen-tutorial-types)
 (require 'thrift-gen-tutorial-constants)
 (require 'thrift-gen-shared-SharedService)
@@ -50,7 +49,11 @@
 
 
 (defun thrift-gen-tutorial-Calculator-read-ping-result (protocol)
-  "Decode content of ping response."
+  "Receive and decode ping response."
+  ;; Preset result
+  (setq res-exception nil)
+  (setq res-result nil)
+  ;; Decode
   (thrift-protocol-read-struct-begin protocol)
   (catch 'break
     (while t

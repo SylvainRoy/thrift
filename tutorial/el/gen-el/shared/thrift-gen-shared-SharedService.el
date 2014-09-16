@@ -9,7 +9,7 @@
 (require 'thrift)
 (require 'thrift-gen-shared-types)
 (require 'thrift-gen-shared-constants)
-
+(require 'thrift-service)
 
 (defclass thrift-gen-shared-SharedService (thrift-service)
   ()

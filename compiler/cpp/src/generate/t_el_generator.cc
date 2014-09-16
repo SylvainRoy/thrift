@@ -256,7 +256,7 @@ void t_el_generator::init_generator()
   }
 
   // Make output files
-  string f_types_name = package_dir_+"/"+"thrift-gen-"+module_+"-ttypes.el";
+  string f_types_name = package_dir_+"/"+"thrift-gen-"+module_+"-types.el";
   f_types_.open(f_types_name.c_str());
 
   string f_consts_name = package_dir_+"/"+"thrift-gen-"+module_+"-constants.el";
@@ -871,15 +871,18 @@ void t_el_generator::generate_service(t_service* tservice) {
     el_autogen_comment() << endl <<
     el_imports() << endl;
 
+  f_service_ <<
+    "(require 'thrift-gen-" + module_ + "-types)" << endl <<
+    "(require 'thrift-gen-" + module_ + "-constants)" << endl;
+
   if (tservice->get_extends() != NULL) {
     f_service_ <<
       "(require 'thrift-gen-" << get_real_el_module(tservice->get_extends()->get_program()) <<
       "-" << tservice->get_extends()->get_name() << ")" << endl;
+  } else {
+    f_service_ <<
+      "(require 'thrift-service)" << endl;
   }
-
-  f_service_ <<
-    "(require 'thrift-gen-" + module_ + "-ttypes)" << endl <<
-    "(require 'thrift-gen-" + module_ + "-tconstants)" << endl;
 
   f_service_ << endl;
 
@@ -1001,7 +1004,7 @@ void t_el_generator::generate_service_helpers(t_service* tservice) {
       indent() << "           (thrift-protocol-skip protocol ftype)))\n" <<
       indent() << "    (thrift-protocol-readFieldEnd protocol)))\n" <<
       indent() << "(thrift-protocol-readStructEnd protocol)\n" <<
-      indent() << "(list res-error res-result))\n" << endl;
+      indent() << "(list res-exception res-result))\n" << endl;
 
   }
 
