@@ -179,7 +179,6 @@ class t_el_generator : public t_generator {
   std::string el_autogen_comment();
   std::string el_imports();
   std::string render_includes();
-  std::string render_fastbinary_includes();
   std::string declare_argument(t_field* tfield);
   std::string render_field_default_value(t_field* tfield);
   std::string type_name(t_type* ttype);
@@ -267,13 +266,12 @@ void t_el_generator::init_generator()
     el_autogen_comment() << endl <<
     el_imports() << endl <<
     render_includes() << endl <<
-    render_fastbinary_includes() <<
     endl << endl;
 
   f_consts_ <<
     el_autogen_comment() << endl <<
     el_imports() << endl <<
-    "from ttypes import *" << endl <<
+    "(require thrift-gen-" << module_ << "-types)" << endl <<
     endl;
 }
 
@@ -284,27 +282,12 @@ string t_el_generator::render_includes() {
   const vector<t_program*>& includes = program_->get_includes();
   string result = "";
   for (size_t i = 0; i < includes.size(); ++i) {
-    result += "import " + get_real_el_module(includes[i]) + ".ttypes\n";
+    result += "(require thrift-gen-" + get_real_el_module(includes[i]) + "-types)\n";
   }
   if (includes.size() > 0) {
     result += "\n";
   }
   return result;
-}
-
-/**
- * Renders all the imports necessary to use the accelerated TBinaryProtocol
- */
-string t_el_generator::render_fastbinary_includes() {
-  string hdr = "";
-  hdr +=
-    "from thrift.transport import TTransport\n"
-    "from thrift.protocol import TBinaryProtocol, TProtocol\n"
-    "try:\n"
-    "  from thrift.protocol import fastbinary\n"
-    "except:\n"
-    "  fastbinary = None\n";
-  return hdr;
 }
 
 /**
@@ -893,7 +876,7 @@ void t_el_generator::generate_service(t_service* tservice) {
   generate_service_remote(tservice);
 
   f_service_ <<
-    "\n(provide 'thrift-gen-" << module_ << "-" << service_name_ << ")" << endl;
+    "(provide 'thrift-gen-" << module_ << "-" << service_name_ << ")" << endl;
 
   // Close service file
   f_service_.close();
@@ -921,93 +904,119 @@ void t_el_generator::generate_service_helpers(t_service* tservice) {
     // generate 'write' helper function
     //
     f_service_ <<
-      indent() << "(defun thrift-gen-" << svc_name << "-write-" << fun_name << " (protocol seqid args)" << endl;
+      indent() << "(defun thrift-gen-" << svc_name << "-write-" << fun_name << "-query (protocol seqid args)" << endl;
     indent_up();
     f_service_ <<
       indent() << "\"Encode and send " << fun_name << " request.\"\n" <<
-      indent() << "(thrift-protocol-writeMessageBegin protocol\n" <<
-      indent() << "                                   \"" << fun_name << "\"\n" <<
-      indent() << "                                   (thrift-constant-message-type 'call)\n" <<
-      indent() << "                                   seqid)\n" <<
-      indent() << "(thrift-protocol-writeStructBegin protocol \"" << fun_name << "_args)\""<< endl;
+      indent() << "(thrift-protocol-write-message-begin protocol\n" <<
+      indent() << "                                     \"" << fun_name << "\"\n" <<
+      indent() << "                                     (thrift-constant-message-type 'call)\n" <<
+      indent() << "                                     seqid)\n" <<
+      indent() << "(thrift-protocol-write-struct-begin protocol \"" << fun_name << "_args\")"<< endl;
     // Encode each argument
     t_struct* arg_struct = (*f_iter)->get_arglist();
     const vector<t_field*>& fields = arg_struct->get_members();
     vector<t_field*>::const_iterator field_iter;
     for(field_iter=fields.begin(); field_iter!=fields.end(); ++field_iter){
       string arg_name = (*field_iter)->get_name();
-      string arg_type = (*field_iter)->get_type()->get_name();
       int32_t arg_key = (*field_iter)->get_key();
+      string arg_type = "";
+      if ((*field_iter)->get_type()->is_base_type()) {
+	arg_type = (*field_iter)->get_type()->get_name();
+	//arg_type = t_base_name((*field_iter)->get_base());
+      } else if ((*field_iter)->get_type()->is_struct()) {
+	arg_type = "struct";
+      } else if ((*field_iter)->get_type()->is_map()) {
+	arg_type = "map";
+      } else if ((*field_iter)->get_type()->is_set()) {
+	arg_type = "set";
+      } else if ((*field_iter)->get_type()->is_enum()) {
+	arg_type = "enum";
+      }
       f_service_ <<
 	indent() << ";; Encode " << arg_name << endl <<
 	indent() << "(when (plist-get args :" << arg_name << ")\n" <<
-	indent() << "  (thrift-protocol-writeFieldBegin protocol\n" <<
-	indent() << "                                   \"" << arg_name << "\"\n" <<
-	indent() << "                                   (thrift-constant-type '" << arg_type << ")\n" <<
-	indent() << "                                   " << arg_key << ")\n" <<
-	indent() << "  (thrift-protocol-write-" << arg_type << " protocol (plist-get args :" << arg_name << "))\n" <<
-	indent() << "  (thrift-protocol-writeFieldEnd protocol))" << endl;
+	indent() << "  (thrift-protocol-write-field-begin protocol\n" <<
+	indent() << "                                     \"" << arg_name << "\"\n" <<
+	indent() << "                                     (thrift-constant-type '" << arg_type << ")\n" <<
+	indent() << "                                     " << arg_key << ")" << endl;
+
+      if ((*field_iter)->get_type()->is_base_type()) {
+	f_service_ <<
+	  indent() << "  (thrift-protocol-write-" << arg_type << " protocol " <<
+	  "(plist-get args :" << arg_name << "))" << endl;
+      } else {
+	f_service_ <<
+	  indent() << "  (thrift-gen-" << get_real_el_module((*field_iter)->get_type()->get_program()) <<
+	  "-write-" << (*field_iter)->get_type()->get_name() << " protocol" <<
+	  " (plist-get args :" << arg_name << "))" << endl;
+      }
+
+      f_service_ <<
+	indent() << "  (thrift-protocol-write-field-end protocol))" << endl;
     }
     f_service_ <<
-      indent() << "(thrift-protocol-writeFieldStop protocol)\n" <<
-      indent() << "(thrift-protocol-writeStructEnd protocol)\n" <<
-      indent() << "(thrift-protocol-writeMessageEnd protocol))\n" << endl;
+      indent() << "(thrift-protocol-write-field-stop protocol)\n" <<
+      indent() << "(thrift-protocol-write-struct-end protocol)\n" <<
+      indent() << "(thrift-protocol-write-message-end protocol))\n\n" << endl;
     indent_down();
 
     //
     // generate 'Read' helper function
     //
-    string return_type = (*f_iter)->get_returntype()->get_name();
-
-    f_service_ <<
-      indent() << "(defun thrift-gen-" << svc_name << "-read-" << fun_name << "-result (protocol)" << endl;
-    indent_up();
-    f_service_ <<
-      indent() << "\"Receive and decode " << fun_name << " response.\"\n" <<
-      indent() << ";; Preset result\n" <<
-      indent() << "(setq res-exception nil)\n" <<
-      indent() << "(setq res-result nil)\n" <<
-      indent() << ";; Decode\n" <<
-      indent() << "(thrift-protocol-readStructBegin protocol)\n" <<
-      indent() << "(catch 'break\n" <<
-      indent() << "  (while t\n" <<
-      indent() << "    (setq r (thrift-protocol-readFieldBegin protocol))\n" <<
-      indent() << "    (setq fname (pop r))\n" <<
-      indent() << "    (setq ftype (pop r))\n" <<
-      indent() << "    (setq fid (pop r))\n" <<
-      indent() << "    (if (equal ftype (thrift-constant-type 'stop))\n" <<
-      indent() << "        (throw 'break t))" << endl;
-    // Read/decode return value
-    if (!(*f_iter)->get_returntype()->is_void()) {
+    if(!(*f_iter)->is_oneway()) {
+      string return_type = (*f_iter)->get_returntype()->get_name();
       f_service_ <<
-	indent() << "    (cond ((equal fid 0) ; Normal return value received\n" <<
-	indent() << "           (if (equal ftype (thrift-constant-type '" << return_type << "))\n" <<
-	indent() << "               (setq res-result (thrift-protocol-read-" << return_type << " protocol))\n" <<
-	indent() << "             (thrift-protocol-skip protocol ftype)))" << endl;
-    }
-    // Read/decode exception
-    std::vector<t_field*> xceptions = (*f_iter)->get_xceptions()->get_members();
-    vector<t_field*>::const_iterator xc_iter;
-    for(xc_iter = xceptions.begin(); xc_iter != xceptions.end(); ++xc_iter){
-      string xc_name = (*xc_iter)->get_name();
-      int32_t xc_key = (*xc_iter)->get_key();
-      string xc_type = (*xc_iter)->get_type()->get_name();
+	indent() << "(defun thrift-gen-" << svc_name << "-read-" << fun_name << "-reply (protocol)" << endl;
+      indent_up();
       f_service_ <<
-	indent() << "          ((equal fid " << xc_key << ") "
-		 << "; " << xc_name << "/" << xc_type << " exception received\n" <<
-	indent() << "           (if (equal ftype (thrift-constant-type 'struct))\n" <<
-	indent() << "               (setq res-error (thrift-gen-tutorial-Calculator-read-" << xc_type << " protocol))\n" <<
-	indent() << "             (thrift-protocol-skip protocol ftype)))" << endl;
+	indent() << "\"Receive and decode " << fun_name << " response.\"\n" <<
+	indent() << ";; Preset result\n" <<
+	indent() << "(setq res-exception nil)\n" <<
+	indent() << "(setq res-result nil)\n" <<
+	indent() << ";; Decode\n" <<
+	indent() << "(thrift-protocol-read-struct-begin protocol)\n" <<
+	indent() << "(catch 'break\n" <<
+	indent() << "  (while t\n" <<
+	indent() << "    (setq r (thrift-protocol-read-field-begin protocol))\n" <<
+	indent() << "    (setq fname (pop r))\n" <<
+	indent() << "    (setq ftype (pop r))\n" <<
+	indent() << "    (setq fid (pop r))\n" <<
+	indent() << "    (if (equal ftype (thrift-constant-type 'stop))\n" <<
+	indent() << "        (throw 'break t)\n" <<
+	indent() << "      (thrift-protocol-skip protocol ftype))" << endl;
+      // Read/decode return value
+      string close_cond = "";
+      if (!(*f_iter)->get_returntype()->is_void()) {
+	close_cond = indent() + "          (t\n" + indent() + "           (thrift-protocol-skip protocol ftype)))\n";
+	f_service_ <<
+	  indent() << "    (cond ((equal fid 0) ; Normal return value received\n" <<
+	  indent() << "           (if (equal ftype (thrift-constant-type '" << return_type << "))\n" <<
+	  indent() << "               (setq res-result (thrift-protocol-read-" << return_type << " protocol))\n" <<
+	  indent() << "             (thrift-protocol-skip protocol ftype)))" << endl;
+      }
+      // Read/decode exception
+      std::vector<t_field*> xceptions = (*f_iter)->get_xceptions()->get_members();
+      vector<t_field*>::const_iterator xc_iter;
+      for(xc_iter = xceptions.begin(); xc_iter != xceptions.end(); ++xc_iter){
+	close_cond = indent() + "          (t\n" + indent() + "           (thrift-protocol-skip protocol ftype)))\n";
+	string xc_name = (*xc_iter)->get_name();
+	int32_t xc_key = (*xc_iter)->get_key();
+	string xc_type = (*xc_iter)->get_type()->get_name();
+	f_service_ <<
+	  indent() << "          ((equal fid " << xc_key << ") "
+		   << "; " << xc_name << " (" << xc_type << ") exception received\n" <<
+	  indent() << "           (if (equal ftype (thrift-constant-type 'struct))\n" <<
+	  indent() << "               (setq res-error (thrift-gen-" << get_real_el_module((*xc_iter)->get_type()->get_program()) << "-read-" << xc_type << " protocol))\n" <<
+	  indent() << "             (thrift-protocol-skip protocol ftype)))" << endl;
+      }
+      f_service_ << close_cond <<
+	indent() << "    (thrift-protocol-read-field-end protocol)))\n" <<
+	indent() << "(thrift-protocol-read-struct-end protocol)\n" <<
+	indent() << "(list res-exception res-result))\n\n" << endl;
+      indent_down();
     }
-    f_service_ <<
-      indent() << "          (t\n" <<
-      indent() << "           (thrift-protocol-skip protocol ftype)))\n" <<
-      indent() << "    (thrift-protocol-readFieldEnd protocol)))\n" <<
-      indent() << "(thrift-protocol-readStructEnd protocol)\n" <<
-      indent() << "(list res-exception res-result))\n" << endl;
-
   }
-
 }
 
 
@@ -1036,7 +1045,7 @@ void t_el_generator::generate_service_client(t_service* tservice) {
   indent_up();
   f_service_ << indent() << "()" << endl;
   f_service_ << indent() << "\"Generated class for the "
-	     << get_real_el_module(tservice->get_program()) << "/"
+	     << get_real_el_module(tservice->get_program()) << "."
 	     << tservice->get_name() << " service.\")\n\n" << endl;
   indent_down();
 
@@ -1058,8 +1067,9 @@ void t_el_generator::generate_service_client(t_service* tservice) {
     string fun_name = (*f_iter)->get_name();
     f_service_ << indent() << "\n                " << open << fun_name << endl;
     open = "  ";
-    f_service_ << indent() << "                (thrift-gen-" << svc_name << "-write-" << fun_name << endl;
-    f_service_ << indent() << "                 thrift-gen-" << svc_name << "-read-" << fun_name << "-result)";
+    f_service_ <<
+      indent() << "                (thrift-gen-" << svc_name << "-write-" << fun_name << "-query\n" <<
+      indent() << "                 thrift-gen-" << svc_name << "-read-" << fun_name << "-reply)";
   }
   f_service_ << "))))\n" << endl;
   indent_down();
@@ -1344,7 +1354,7 @@ void t_el_generator::generate_process_function(t_service* tservice,
   }
 
   f_service_ <<
-    indent() << "oprot.writeMessageBegin(\"" << tfunction->get_name() << "\", TMessageType.REPLY, seqid)" << endl <<
+    indent() << "oprot.write-message-begin(\"" << tfunction->get_name() << "\", TMessageType.REPLY, seqid)" << endl <<
     indent() << "result.write(oprot)" << endl <<
     indent() << "oprot.writeMessageEnd()" << endl <<
     indent() << "oprot.trans.flush()" << endl;

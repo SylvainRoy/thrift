@@ -7,7 +7,7 @@
 ;;
 
 (require 'thrift)
-
+(require 'thrift-gen-shared-types)
 
 ;;
 ;; You can define enums, which are just 32 bit integers. Values are optional
@@ -37,7 +37,7 @@
 ;; manual management in some languages.
 ;;
 
-(defun thrift-gen-tutorial-Calculator-write-Work (protocol work)
+(defun thrift-gen-tutorial-write-Work (protocol work)
   "Write Work struct."
   (thrift-protocol-write-struct-begin protocol "Work")
   ;; parameter: num1
@@ -80,7 +80,7 @@
 ;; Structs can also be exceptions, if they are nasty.
 ;;
 
-(defun thrift-gen-tutorial-Calculator-read-InvalidOperation (protocol)
+(defun thrift-gen-tutorial-read-InvalidOperation (protocol)
   "Read InvalidOperation Exception."
   ;; Preset result
   (setq res-what nil)
