@@ -89,8 +89,8 @@ class t_el_generator : public t_generator {
 
   void generate_el_struct(t_struct* tstruct, bool is_exception);
   void generate_el_struct_definition(std::ofstream& out, t_struct* tstruct, bool is_xception=false, bool is_result=false);
-  void generate_el_struct_reader(std::ofstream& out, t_struct* tstruct);
-  void generate_el_struct_writer(std::ofstream& out, t_struct* tstruct);
+  void generate_el_struct_reader(std::ofstream& out, t_struct* tstruct, bool is_exception, bool is_result);
+  void generate_el_struct_writer(std::ofstream& out, t_struct* tstruct, bool is_exception, bool is_result);
   void generate_el_struct_required_validator(std::ofstream& out, t_struct* tstruct);
   //void generate_el_function_helpers(t_function* tfunction);
 
@@ -339,30 +339,34 @@ void t_el_generator::generate_typedef(t_typedef* ttypedef) {
 void t_el_generator::generate_enum(t_enum* tenum) {
   std::ostringstream to_string_mapping, from_string_mapping;
 
-  f_types_ <<
-    "class " << tenum->get_name() << ":" << endl;
-  indent_up();
+  string module = get_real_el_module(tenum->get_program());
+
   generate_elisp_docstring(f_types_, tenum);
 
-  to_string_mapping << indent() << "_VALUES_TO_NAMES = {" << endl;
-  from_string_mapping << indent() << "_NAMES_TO_VALUES = {" << endl;
+  to_string_mapping <<
+    "(defun thrift-gen-" << module << "-" << tenum->get_name() << "-to-int (in)" << endl;
+  from_string_mapping <<
+    "(defun thrift-gen-" << module << "-int-to-" << tenum->get_name() << " (in)" << endl;
 
+  indent_up();
+
+  string beg_cond = "(cond ";
   vector<t_enum_value*> constants = tenum->get_constants();
   vector<t_enum_value*>::iterator c_iter;
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
     int value = (*c_iter)->get_value();
-    indent(f_types_) << (*c_iter)->get_name() << " = " << value << endl;
 
     // Dictionaries to/from string names of enums
     to_string_mapping <<
-      indent() << indent() << value << ": \"" <<
-      escape_string((*c_iter)->get_name()) << "\"," << endl;
+      indent() << beg_cond << "((eq in '" <<
+      escape_string((*c_iter)->get_name()) << ") " << value << ")";
     from_string_mapping <<
-      indent() << indent() << '"' << escape_string((*c_iter)->get_name()) <<
-      "\": " << value << ',' << endl;
+      indent() << beg_cond << "((eq in " <<
+      value << ") '" << escape_string((*c_iter)->get_name()) << ")";
+    beg_cond = "\n        ";
   }
-  to_string_mapping << indent() << "}" << endl;
-  from_string_mapping << indent() << "}" << endl;
+  to_string_mapping << "))" << endl;
+  from_string_mapping << "))" << endl;
 
   indent_down();
   f_types_ << endl;
@@ -523,113 +527,13 @@ void t_el_generator::generate_el_struct_definition(ofstream& out,
 						   t_struct* tstruct,
 						   bool is_exception,
 						   bool is_result) {
-  (void) is_result;
-  const vector<t_field*>& members = tstruct->get_members();
-  const vector<t_field*>& sorted_members = tstruct->get_sorted_members();
-  vector<t_field*>::const_iterator m_iter;
-
-  out << std::endl <<
-    "class " << tstruct->get_name();
-  if (is_exception) {
-    out << "(TException)";
-  } else {
-    out << "(object)";
-  }
-  out << ":" << endl;
-  indent_up();
   generate_elisp_docstring(out, tstruct);
 
-  out << endl;
-
-  /*
-     Here we generate the structure specification for the fastbinary codec.
-     These specifications have the following structure:
-     thrift_spec -> tuple of item_spec
-     item_spec -> None | (tag, type_enum, name, spec_args, default)
-     tag -> integer
-     type_enum -> TType.I32 | TType.STRING | TType.STRUCT | ...
-     name -> string_literal
-     default -> None  # Handled by __init__
-     spec_args -> None  # For simple types
-		| (type_enum, spec_args)  # Value type for list/set
-		| (type_enum, spec_args, type_enum, spec_args)
-		  # Key and value for map
-		| (class_name, spec_args_ptr) # For struct/exception
-     class_name -> identifier  # Basically a pointer to the class
-     spec_args_ptr -> expression  # just class_name.spec_args
-
-     TODO(dreiss): Consider making this work for structs with negative tags.
-  */
+  (void) is_result;
 
 
-  // TODO(dreiss): Look into generating an empty tuple instead of None
-  // for structures with no members.
-  // TODO(dreiss): Test encoding of structs where some inner structs
-  // don't have thrift_spec.
-  if (sorted_members.empty() || (sorted_members[0]->get_key() >= 0)) {
-    indent(out) << "thrift_spec = (" << endl;
-    indent_up();
-
-    int sorted_keys_pos = 0;
-    for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
-
-      for (; sorted_keys_pos != (*m_iter)->get_key(); sorted_keys_pos++) {
-	indent(out) << "None, # " << sorted_keys_pos << endl;
-      }
-
-      indent(out) << "(" << (*m_iter)->get_key() << ", "
-	    << type_to_enum((*m_iter)->get_type()) << ", "
-	    << "'" << (*m_iter)->get_name() << "'" << ", "
-	    << type_to_spec_args((*m_iter)->get_type()) << ", "
-	    << render_field_default_value(*m_iter) << ", "
-	    << "),"
-	    << " # " << sorted_keys_pos
-	    << endl;
-
-      sorted_keys_pos ++;
-    }
-
-    indent_down();
-    indent(out) << ")" << endl << endl;
-  } else {
-    indent(out) << "thrift_spec = None" << endl;
-  }
-
-
-  if (members.size() > 0) {
-    out <<
-      indent() << "def __init__(self,";
-
-    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-      // This fills in default values, as opposed to nulls
-      out << " " << declare_argument(*m_iter) << ",";
-    }
-
-    out << "):" << endl;
-
-    indent_up();
-
-    for (m_iter = members.begin(); m_iter != members.end(); ++m_iter) {
-      // Initialize fields
-      t_type* type = (*m_iter)->get_type();
-      if (!type->is_base_type() && !type->is_enum() && (*m_iter)->get_value() != NULL) {
-	indent(out) <<
-	  "if " << (*m_iter)->get_name() << " is " << "self.thrift_spec[" <<
-	    (*m_iter)->get_key() << "][4]:" << endl;
-	indent(out) << "  " << (*m_iter)->get_name() << " = " <<
-	  render_field_default_value(*m_iter) << endl;
-      }
-      indent(out) <<
-	"self." << (*m_iter)->get_name() << " = " << (*m_iter)->get_name() << endl;
-    }
-
-    indent_down();
-
-    out << endl;
-  }
-
-  generate_el_struct_reader(out, tstruct);
-  generate_el_struct_writer(out, tstruct);
+  generate_el_struct_reader(out, tstruct, is_exception, is_result);
+  generate_el_struct_writer(out, tstruct, is_exception, is_result);
 
   // For exceptions only, generate a __str__ method. This is
   // because when raised exceptions are printed to the console, __repr__
@@ -675,150 +579,135 @@ void t_el_generator::generate_el_struct_definition(ofstream& out,
  * Generates the read method for a struct
  */
 void t_el_generator::generate_el_struct_reader(ofstream& out,
-						t_struct* tstruct) {
-  const vector<t_field*>& fields = tstruct->get_members();
-  vector<t_field*>::const_iterator f_iter;
+					       t_struct* tstruct,
+					       bool is_exception,
+					       bool is_result) {
 
-  indent(out) <<
-    "def read(self, iprot):" << endl;
+  const vector<t_field*>& sorted_members = tstruct->get_sorted_members();
+  vector<t_field*>::const_iterator m_iter;
+  string structname = tstruct->get_name();
+
+  out << std::endl <<
+    "(defun thrift-gen-" << get_real_el_module(tstruct->get_program()) << "-read-" << structname << " (protocol)"<< endl;
   indent_up();
 
-  indent(out) <<
-    "if iprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated "
-    "and isinstance(iprot.trans, TTransport.CReadableTransport) "
-    "and self.thrift_spec is not None "
-    "and fastbinary is not None:" << endl;
-  indent_up();
-
-  indent(out) <<
-    "fastbinary.decode_binary(self, iprot.trans, (self.__class__, self.thrift_spec))" << endl;
-  indent(out) <<
-    "return" << endl;
-  indent_down();
-
-  indent(out) <<
-    "iprot.readStructBegin()" << endl;
-
-  // Loop over reading in fields
-  indent(out) <<
-    "while True:" << endl;
-    indent_up();
-
-    // Read beginning field marker
-    indent(out) <<
-      "(fname, ftype, fid) = iprot.readFieldBegin()" << endl;
-
-    // Check for field STOP marker and break
-    indent(out) <<
-      "if ftype == TType.STOP:" << endl;
-    indent_up();
-    indent(out) <<
-      "break" << endl;
-    indent_down();
-
-    // Switch statement on the field we are reading
-    bool first = true;
-
-    // Generate deserialization code for known cases
-    for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-      if (first) {
-	first = false;
-	out <<
-	  indent() << "if ";
-      } else {
-	out <<
-	  indent() << "elif ";
-      }
-      out << "fid == " << (*f_iter)->get_key() << ":" << endl;
-      indent_up();
-      indent(out) << "if ftype == " << type_to_enum((*f_iter)->get_type()) << ":" << endl;
-      indent_up();
-      generate_deserialize_field(out, *f_iter, "self.");
-      indent_down();
-      out <<
-	indent() << "else:" << endl <<
-	indent() << "  iprot.skip(ftype)" << endl;
-      indent_down();
-    }
-
-    // In the default case we skip the field
-    out <<
-      indent() <<  "else:" << endl <<
-      indent() <<  "  iprot.skip(ftype)" << endl;
-
-    // Read field end marker
-    indent(out) <<
-      "iprot.readFieldEnd()" << endl;
-
-    indent_down();
-
-    indent(out) <<
-      "iprot.readStructEnd()" << endl;
-
-    indent_down();
+  out << indent() << "\"Read " << structname;
+  if(is_exception) {
+    out << " exception.\"";
+  } else {
+    out << " struct.\"";
+  }
   out << endl;
-}
 
-void t_el_generator::generate_el_struct_writer(ofstream& out,
-					       t_struct* tstruct) {
-  string name = tstruct->get_name();
-  const vector<t_field*>& fields = tstruct->get_sorted_members();
-  vector<t_field*>::const_iterator f_iter;
-
-  indent(out) << "def write(self, oprot):" << endl;
-  indent_up();
-
-  indent(out) <<
-    "if oprot.__class__ == TBinaryProtocol.TBinaryProtocolAccelerated "
-    "and self.thrift_spec is not None "
-    "and fastbinary is not None:" << endl;
-  indent_up();
-
-  indent(out) <<
-    "oprot.trans.write(fastbinary.encode_binary(self, (self.__class__, self.thrift_spec)))" << endl;
-  indent(out) <<
-    "return" << endl;
-  indent_down();
-
-  indent(out) <<
-    "oprot.writeStructBegin('" << name << "')" << endl;
-
-  for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    // Write field header
-    indent(out) <<
-      "if self." << (*f_iter)->get_name() << " is not None:" << endl;
-    indent_up();
-    indent(out) <<
-      "oprot.writeFieldBegin(" <<
-      "'" << (*f_iter)->get_name() << "', " <<
-      type_to_enum((*f_iter)->get_type()) << ", " <<
-      (*f_iter)->get_key() << ")" << endl;
-
-    // Write field contents
-    generate_serialize_field(out, *f_iter, "self.");
-
-    // Write field closer
-    indent(out) <<
-      "oprot.writeFieldEnd()" << endl;
-
-    indent_down();
+  out << indent() << ";; Preset result" << endl;
+  for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
+    string field_name = (*m_iter)->get_name();
+    out << indent() <<
+      "(setq res-" << field_name << " nil)" << endl;
   }
 
-  // Write the struct map
   out <<
-    indent() << "oprot.writeFieldStop()" << endl <<
-    indent() << "oprot.writeStructEnd()" << endl;
+    indent() << ";; Decode\n" <<
+    indent() << "(thrift-protocol-read-struct-begin protocol)\n" <<
+    indent() << "(catch 'break\n" <<
+    indent() << "  (while t\n" <<
+    indent() << "    (setq r (thrift-protocol-read-field-begin protocol))\n" <<
+    indent() << "    (setq fname (pop r))\n" <<
+    indent() << "    (setq ftype (pop r))\n" <<
+    indent() << "    (setq fid (pop r))\n" <<
+    indent() << "    (if (equal ftype (thrift-constant-type 'stop))\n" <<
+    indent() << "        (throw 'break t))\n";
 
+  string cond_beg = "(cond ";
+  for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
+    string field_name = (*m_iter)->get_name();
+    string field_type = (*m_iter)->get_type()->get_name();
+    int32_t field_key = (*m_iter)->get_key();
+    string field_type_type = "'i32";
+    if ((*m_iter)->get_type()->is_base_type()) {
+      field_type_type = (*m_iter)->get_type()->get_name();
+    } else if ((*m_iter)->get_type()->is_struct()) {
+      field_type_type = "struct";
+    } else if ((*m_iter)->get_type()->is_map()) {
+      field_type_type = "map";
+    } else if ((*m_iter)->get_type()->is_set()) {
+      field_type_type = "set";
+    } else if ((*m_iter)->get_type()->is_enum()) {
+      field_type_type = "i32";
+    }
+
+    out <<
+      indent() << "    " << cond_beg << "((equal fid " << field_key << ") ; '" << field_name << "' element\n" <<
+      indent() << "           (if (equal ftype (thrift-constant-type '" << field_type_type << "))\n" <<
+      indent() << "               (setq res-what (thrift-protocol-read-" << field_type_type << " protocol))\n" <<
+      indent() << "             (thrift-protocol-skip protocol ftype)))\n";
+
+    cond_beg = "      ";
+  }
+
+  out <<
+    indent() << "      (thrift-protocol-read-field-end protocol)))\n" <<
+    indent() << "  (thrift-protocol-read-struct-end protocol)\n" <<
+    indent() << "  (list res-what res-why))\n" << endl;
+}
+
+
+void t_el_generator::generate_el_struct_writer(ofstream& out,
+					       t_struct* tstruct,
+					       bool is_exception,
+					       bool is_result) {
+  const vector<t_field*>& sorted_members = tstruct->get_sorted_members();
+  vector<t_field*>::const_iterator m_iter;
+  string structname = tstruct->get_name();
+
+  out << std::endl <<
+    "(defun thrift-gen-" << get_real_el_module(tstruct->get_program()) << "-write-" << structname << " (protocol in)"<< endl;
+  indent_up();
+
+  out << indent() << "\"Write " << structname;
+  if(is_exception) {
+    out << " exception.\"";
+  } else {
+    out << " struct.\"";
+  }
   out << endl;
 
-  indent_down();
-  generate_el_struct_required_validator(out, tstruct);
+  out << indent() << "(thrift-protocol-write-struct-begin protocol \"" << structname << "\")" << endl;
+
+  for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
+    string field_name = (*m_iter)->get_name();
+    string field_type = (*m_iter)->get_type()->get_name();
+    int32_t field_key = (*m_iter)->get_key();
+    string field_type_type = "'i32";
+    if ((*m_iter)->get_type()->is_base_type()) {
+      field_type_type = (*m_iter)->get_type()->get_name();
+    } else if ((*m_iter)->get_type()->is_struct()) {
+      field_type_type = "struct";
+    } else if ((*m_iter)->get_type()->is_map()) {
+      field_type_type = "map";
+    } else if ((*m_iter)->get_type()->is_set()) {
+      field_type_type = "set";
+    } else if ((*m_iter)->get_type()->is_enum()) {
+      field_type_type = "i32";
+    }
+
+    out <<
+      "  ;; encode " <<  field_name << "\n" <<
+      "  (when (plist-get in :" << field_name << ")\n" <<
+      "    (thrift-protocol-write-field-begin protocol\n" <<
+      "                                       \"" << field_name << "\"\n" <<
+      "                                       (thrift-constant-type '" << field_type_type << ")\n" <<
+      "                                       " << field_key << ")\n" <<
+      "    (thrift-protocol-write-" << field_type << " protocol (plist-get in :" << field_name << "))\n" <<
+      "    (thrift-protocol-write-field-end protocol))" << endl;
+  }
   out <<
-    endl;
+    "  (thrift-protocol-write-field-stop protocol)\n" <<
+    "  (thrift-protocol-write-struct-end protocol))\n\n" << endl;
 }
 
 void t_el_generator::generate_el_struct_required_validator(ofstream& out,
-					       t_struct* tstruct) {
+							   t_struct* tstruct) {
   indent(out) << "def validate(self):" << endl;
   indent_up();
 
@@ -931,7 +820,7 @@ void t_el_generator::generate_service_helpers(t_service* tservice) {
       } else if ((*field_iter)->get_type()->is_set()) {
 	arg_type = "set";
       } else if ((*field_iter)->get_type()->is_enum()) {
-	arg_type = "enum";
+	arg_type = "i32";
       }
       f_service_ <<
 	indent() << ";; Encode " << arg_name << endl <<
@@ -1792,9 +1681,9 @@ void t_el_generator::generate_elisp_docstring(ofstream& out,
 
   if (has_doc) {
     generate_docstring_comment(out,
-      "\"\"\"\n",
-      "", ss.str(),
-      "\"\"\"\n");
+      ";;\n",
+      ";; ", ss.str(),
+      ";;\n");
   }
 }
 
@@ -1805,9 +1694,9 @@ void t_el_generator::generate_elisp_docstring(ofstream& out,
 					       t_doc* tdoc) {
   if (tdoc->has_doc()) {
     generate_docstring_comment(out,
-      "\"\"\"\n",
-      "", tdoc->get_doc(),
-      "\"\"\"\n");
+      ";;\n",
+      ";; ", tdoc->get_doc(),
+      ";;\n");
   }
 }
 

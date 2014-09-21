@@ -14,17 +14,17 @@
 ;; and start at 1 if not supplied, C style again.
 ;;
 
-(defun thrift-gen-tutorial-Operation-to-int (operation)
-  (cond ((eq operation 'add)       1)
-	((eq operation 'substract) 2)
-	((eq operation 'multiply)  3)
-	((eq operation 'divide)    4)))
+(defun thrift-gen-tutorial-Operation-to-int (in)
+  (cond ((eq in 'ADD) 1)
+	((eq in 'SUBSTRACT) 2)
+	((eq in 'MULTIPLY) 3)
+	((eq in 'DIVIDE) 4)))
 
-(defun thrift-gen-tutorial-int-to-Operation (int)
-  (cond ((eq int '1) 'add)
-	((eq int '2) 'substract)
-	((eq int '3) 'multiply)
-	((eq int '4) 'divide)))
+(defun thrift-gen-tutorial-int-to-Operation (in)
+  (cond ((eq in 1) 'ADD)
+	((eq in 2) 'SUBSTRACT)
+	((eq in 3) 'MULTIPLY)
+	((eq in 4) 'DIVIDE)))
 
 
 ;;
@@ -40,7 +40,7 @@
 (defun thrift-gen-tutorial-write-Work (protocol work)
   "Write Work struct."
   (thrift-protocol-write-struct-begin protocol "Work")
-  ;; parameter: num1
+  ;; Encode num1
   (when (plist-get work :num1)
     (thrift-protocol-write-field-begin protocol
 				       "num1"
@@ -48,7 +48,7 @@
 				       1)
     (thrift-protocol-write-i32 protocol (plist-get work :num1))
     (thrift-protocol-write-field-end protocol))
-  ;; parameter: num2
+  ;; Encode num2
   (when (plist-get work :num2)
     (thrift-protocol-write-field-begin protocol
 				       "num2"
@@ -56,7 +56,7 @@
 				       2)
     (thrift-protocol-write-i32 protocol (plist-get work :num2))
     (thrift-protocol-write-field-end protocol))
-  ;; parameter: op
+  ;; Encode op
   (when (plist-get work :op)
     (thrift-protocol-write-field-begin protocol
 				       "op"
@@ -64,7 +64,7 @@
 				       3)
     (thrift-protocol-write-i32 protocol (thrift-gen-tutorial-Operation-to-int (plist-get work :op)))
     (thrift-protocol-write-field-end protocol))
-  ;; parameter: comment
+  ;; Encode comment
   (when (plist-get work :comment)
     (thrift-protocol-write-field-begin protocol
 				       "comment"
@@ -95,13 +95,13 @@
       (setq fid (pop r))
       (if (equal ftype (thrift-constant-type 'stop))
 	  (throw 'break t))
-      (cond ((equal fid 1)
+      (cond ((equal fid 1) ; 'what' element
 	     (if (equal ftype (thrift-constant-type 'i32))
 		 (setq res-what (thrift-protocol-read-i32 protocol))
 	       (thrift-protocol-skip protocol ftype)))
-	    ((equal fid 2)
+	    ((equal fid 2) ; 'why' element
 	     (if (equal ftype (thrift-constant-type 'string))
-		 (setq res-string (thrift-protocol-read-string protocol))
+		 (setq res-why (thrift-protocol-read-string protocol))
 	       (thrift-protocol-skip protocol ftype)))
 	    (t
 	     (thrift-protocol-skip protocol ftype)))
