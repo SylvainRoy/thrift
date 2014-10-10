@@ -1,64 +1,80 @@
 Here are todo to finalise the implementation:
 
--2- writeI32 should be write-i32
-================================
+== 2- writeI32 should be write-i32 ==
+
 Cause more inline with elisp convention and simpler to generate.
 
--1- thrift-gen-tutorial-Calculator should be thrift-gen-tutorial-Calculator-client
-==================================================================================
+
+== 1- thrift-gen-tutorial-Calculator should be thrift-gen-tutorial-Calculator-client ==
+
 Cause, there is the processor, the server...
 
-0- write-args fun should write fun
-==================================
+
+== 0- write-args fun should write fun ==
+
 Indeed, it writes the whole message.
 
-1- The binary protocol should support doubles
-=============================================
+
+== 1- The binary protocol should support doubles ==
+
 Not that simple. Emacs does not support double.
 So floats are to be used. The problem is that they still need to be encoded/decoded as doubles.
 The node.js implementation can be copied...
 
-3- Be a little clearer on the max size supported for int
-========================================================
+
+== 3- Be a little clearer on the max size supported for int ==
+
 Emacs is limited to 30 bits, but this implementation of thrift is limited to 24 or 30 bits depending on the function. Should either be optimized to 30 or clearly stated that the limit is 24.
 
-4- Find and remove all 'todo' from code
-=======================================
 
-5- the directory tutorial/el/gen-el should be automatically generated
-=====================================================================
+== 4- Find and remove all 'todo' from code ==
+
+
+== 5- the directory tutorial/el/gen-el should be automatically generated ==
+
 For the time being, I did it manually...
 ==> on-going...
 
-6- Found a nice way to handle constant
-======================================
+
+== 6- Found a nice way to handle constant ==
+
 Here is an example from nodejs client:
      work.op = ttypes.Operation.SUBTRACT;
 For the time, being, I just use the int value.
 Not very nice...
 
-7- Support for oneway function
-==============================
+
+== 7- Support for oneway function ==
+
+
+== 8- Use the pattern below to avoid spoilling global env ==
+
+ (let (boundaries pos1 pos2 mything)
+    (setq boundaries (bounds-of-thing-at-point 'word))
+    (setq pos1 (car boundaries))
+    (setq pos2 (cdr boundaries))
 
 
 
 
+= DONE DONE DONE DONE DONE =
 
-DONE DONE DONE DONE DONE
 
-2- Partial reception of the reply should be handled nicely
-==========================================================
+== 2- Partial reception of the reply should be handled nicely ==
+
 In the current state, it makes the whole decoding to crash.
 Interestengly, it seems to be the same in the python/twisted implementation.
 This could easily be done by having the protocol not flushing decoded data during decoding.
 Then, the data would be fluched only by a readMessageEnd. This would guarantee that the decoding restart from scratch once further data are received. Somehow inefficient, but very simple.
 
-6- the transport must have the method flush and only sent when it is called
-===========================================================================
+
+== 6- the transport must have the method flush and only sent when it is called ==
+
 Otherwise, the network usage is damn innefficient...
 
--2- Review support of struct/exception
-======================================
+
+== -2- Review support of struct/exception ==
+
 Struct and exception are currently list.
 That does work OK but isn't very nice: the attributes of the struct do not appear at all.
 Objects seem a little to much (inheritance is not used and the syntax to create an object is painful).
@@ -69,14 +85,16 @@ proof of concept:
 (setq plist '(a: 1 b: (c: 2 d: 3) e: 4))
 (plist-get (plist-get plist 'b:) 'c:)
 
--1- Review linking of generated method in service objects
-=========================================================
+
+== 1- Review linking of generated method in service objects ==
+
 Generated methods should be appended to 'functions' attribute of services from initialize-instance.
 This will allow inheritance to work when a service extends another.
 For the time being the 'functions' attribute is overwritten by the child class.
 
-0- Review manual generated code to be in synch with new finding from auto generation
-====================================================================================
+
+== 0- Review manual generated code to be in synch with new finding from auto generation ==
+
  - thrift-client-calculator.el should be thrift-ns-tutorial-svc-Calculator.el (same with class)
  - the class thrift-gen-tutorial-Calculator should inherit from thrift-gen-shared-SharedService
  - create files:

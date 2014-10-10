@@ -11,7 +11,8 @@
 
 (setq INT32CONSTANT 9853)
 
-(setq MAPCONSTANT '("hello" "world"
-		    "goodnight" "moon"))
+(setq MAPCONSTANT '(
+  "hello" "world"
+  "goodnight" "moon"))
 
 (provide 'thrift-gen-tutorial-constants)

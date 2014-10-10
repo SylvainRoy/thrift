@@ -265,14 +265,12 @@ void t_el_generator::init_generator()
   f_types_ <<
     el_autogen_comment() << endl <<
     el_imports() << endl <<
-    render_includes() << endl <<
-    endl << endl;
+    render_includes() << endl << endl;
 
   f_consts_ <<
     el_autogen_comment() << endl <<
     el_imports() << endl <<
-    "(require thrift-gen-" << module_ << "-types)" << endl <<
-    endl;
+    "(require 'thrift-gen-" << module_ << "-types)" << endl << endl;
 }
 
 /**
@@ -282,7 +280,7 @@ string t_el_generator::render_includes() {
   const vector<t_program*>& includes = program_->get_includes();
   string result = "";
   for (size_t i = 0; i < includes.size(); ++i) {
-    result += "(require thrift-gen-" + get_real_el_module(includes[i]) + "-types)\n";
+    result += "(require 'thrift-gen-" + get_real_el_module(includes[i]) + "-types)\n";
   }
   if (includes.size() > 0) {
     result += "\n";
@@ -316,6 +314,12 @@ string t_el_generator::el_imports() {
  * Closes the type files
  */
 void t_el_generator::close_generator() {
+  // Print trailer
+  f_types_ <<
+    "(provide 'thrift-gen-" << module_ << "-types)" << endl;
+  f_consts_ <<
+    "(provide 'thrift-gen-" << module_ << "-constants)" << endl;
+
   // Close types file
   f_types_.close();
   f_consts_.close();
@@ -342,35 +346,47 @@ void t_el_generator::generate_enum(t_enum* tenum) {
   string module = get_real_el_module(tenum->get_program());
 
   generate_elisp_docstring(f_types_, tenum);
+  f_types_ << endl;
 
-  to_string_mapping <<
+  // Function to convert enum symbols to int
+  f_types_ <<
     "(defun thrift-gen-" << module << "-" << tenum->get_name() << "-to-int (in)" << endl;
-  from_string_mapping <<
-    "(defun thrift-gen-" << module << "-int-to-" << tenum->get_name() << " (in)" << endl;
-
-  indent_up();
-
   string beg_cond = "(cond ";
   vector<t_enum_value*> constants = tenum->get_constants();
   vector<t_enum_value*>::iterator c_iter;
   for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
     int value = (*c_iter)->get_value();
-
-    // Dictionaries to/from string names of enums
-    to_string_mapping <<
-      indent() << beg_cond << "((eq in '" <<
+    f_types_ <<
+      "  "  << beg_cond << "((eq in '" <<
       escape_string((*c_iter)->get_name()) << ") " << value << ")";
-    from_string_mapping <<
-      indent() << beg_cond << "((eq in " <<
+    beg_cond = "\n        ";
+  }
+  f_types_ << "))\n" << endl;
+
+  // Function to convert enum symbols from int
+  f_types_<<
+    "(defun thrift-gen-" << module << "-int-to-" << tenum->get_name() << " (in)" << endl;
+  beg_cond = "(cond ";
+  for (c_iter = constants.begin(); c_iter != constants.end(); ++c_iter) {
+    int value = (*c_iter)->get_value();
+    f_types_ <<
+      "  " << beg_cond << "((eq in " <<
       value << ") '" << escape_string((*c_iter)->get_name()) << ")";
     beg_cond = "\n        ";
   }
-  to_string_mapping << "))" << endl;
-  from_string_mapping << "))" << endl;
+  f_types_ << "))\n\n" << endl;
 
-  indent_down();
-  f_types_ << endl;
-  f_types_ << to_string_mapping.str() << endl << from_string_mapping.str() << endl;
+  // Function to read an enum
+  f_types_ <<
+    "(defun thrift-gen-tutorial-read-" << tenum->get_name() << " (protocol)\n" <<
+    "  \"Read '" << tenum->get_name() << "' enum.\"\n" <<
+    "  (thrift-gen-tutorial-int-to-" << tenum->get_name() << " (thrift-protocol-read-i32 protocol)))\n\n";
+
+  f_types_ <<
+    "(defun thrift-gen-tutorial-write-" << tenum->get_name() << " (protocol in)\n" <<
+    "  \"Write '" << tenum->get_name() << "' enum.\"\n" <<
+    "  (thrift-protocol-write-i32 protocol\n"
+    "                             (thrift-gen-tutorial-" << tenum->get_name() << "-to-int in)))\n\n" << endl;
 }
 
 /**
@@ -381,7 +397,7 @@ void t_el_generator::generate_const(t_const* tconst) {
   string name = tconst->get_name();
   t_const_value* value = tconst->get_value();
 
-  indent(f_consts_) << name << " = " << render_const_value(type, value);
+  indent(f_consts_) << "(setq " << name << " " << render_const_value(type, value) << ")\n";
   f_consts_ << endl;
 }
 
@@ -401,7 +417,7 @@ string t_el_generator::render_const_value(t_type* type, t_const_value* value) {
       out << '"' << get_escaped_string(value) << '"';
       break;
     case t_base_type::TYPE_BOOL:
-      out << (value->get_integer() > 0 ? "True" : "False");
+      out << (value->get_integer() > 0 ? "t" : "nil");
       break;
     case t_base_type::TYPE_BYTE:
     case t_base_type::TYPE_I16:
@@ -422,7 +438,7 @@ string t_el_generator::render_const_value(t_type* type, t_const_value* value) {
   } else if (type->is_enum()) {
     indent(out) << value->get_integer();
   } else if (type->is_struct() || type->is_xception()) {
-    out << type_name(type) << "(**{" << endl;
+    out << "'(" << endl;
     indent_up();
     const vector<t_field*>& fields = ((t_struct*)type)->get_members();
     vector<t_field*>::const_iterator f_iter;
@@ -439,29 +455,28 @@ string t_el_generator::render_const_value(t_type* type, t_const_value* value) {
 	throw "type error: " + type->get_name() + " has no field " + v_iter->first->get_string();
       }
       out << indent();
-      out << render_const_value(g_type_string, v_iter->first);
-      out << " : ";
-      out << render_const_value(field_type, v_iter->second);
-      out << "," << endl;
+      out << ":" << render_const_value(g_type_string, v_iter->first);
+      out << " " << render_const_value(field_type, v_iter->second);
+      out << " " << endl;
     }
     indent_down();
-    indent(out) << "})";
+    indent(out) << ")";
   } else if (type->is_map()) {
     t_type* ktype = ((t_map*)type)->get_key_type();
     t_type* vtype = ((t_map*)type)->get_val_type();
-    out << "{" << endl;
+    out << "'(";
     indent_up();
     const map<t_const_value*, t_const_value*>& val = value->get_map();
     map<t_const_value*, t_const_value*>::const_iterator v_iter;
     for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
-      out << indent();
+      out << "\n" << indent();
       out << render_const_value(ktype, v_iter->first);
-      out << " : ";
+      out << " ";
       out << render_const_value(vtype, v_iter->second);
-      out << "," << endl;
+      out << "";
     }
     indent_down();
-    indent(out) << "}";
+    indent(out) << ")";
   } else if (type->is_list() || type->is_set()) {
     t_type* etype;
     if (type->is_list()) {
@@ -470,19 +485,17 @@ string t_el_generator::render_const_value(t_type* type, t_const_value* value) {
       etype = ((t_set*)type)->get_elem_type();
     }
     if (type->is_set()) {
-      out << "set(";
+      out << "'(";
     }
-    out << "[" << endl;
     indent_up();
     const vector<t_const_value*>& val = value->get_list();
     vector<t_const_value*>::const_iterator v_iter;
     for (v_iter = val.begin(); v_iter != val.end(); ++v_iter) {
       out << indent();
       out << render_const_value(etype, *v_iter);
-      out << "," << endl;
+      out << " " << endl;
     }
     indent_down();
-    indent(out) << "]";
     if (type->is_set()) {
       out << ")";
     }
@@ -530,49 +543,8 @@ void t_el_generator::generate_el_struct_definition(ofstream& out,
   generate_elisp_docstring(out, tstruct);
 
   (void) is_result;
-
-
   generate_el_struct_reader(out, tstruct, is_exception, is_result);
   generate_el_struct_writer(out, tstruct, is_exception, is_result);
-
-  // For exceptions only, generate a __str__ method. This is
-  // because when raised exceptions are printed to the console, __repr__
-  // isn't used. See Python bug #5882
-  if (is_exception) {
-    out <<
-      indent() << "def __str__(self):" << endl <<
-      indent() << "  return repr(self)" << endl <<
-      endl;
-  }
-
-  // no base class available to implement __eq__ and __repr__ and __ne__ for us
-  // so we must provide one that uses __slots__
-  out <<
-    indent() << "def __repr__(self):" << endl <<
-    indent() << "  L = ['%s=%r' % (key, getattr(self, key))" << endl <<
-    indent() << "    for key in self.__slots__]" << endl <<
-    indent() << "  return '%s(%s)' % (self.__class__.__name__, ', '.join(L))" << endl <<
-    endl;
-
-  // Equality method that compares each attribute by value and type, walking __slots__
-  out <<
-    indent() << "def __eq__(self, other):" << endl <<
-    indent() << "  if not isinstance(other, self.__class__):" << endl <<
-    indent() << "    return False" << endl <<
-    indent() << "  for attr in self.__slots__:" << endl <<
-    indent() << "    my_val = getattr(self, attr)" << endl <<
-    indent() << "    other_val = getattr(other, attr)" << endl <<
-    indent() << "    if my_val != other_val:" << endl <<
-    indent() << "      return False" << endl <<
-    indent() << "  return True" << endl <<
-    endl;
-
-  out <<
-    indent() << "def __ne__(self, other):" << endl <<
-    indent() << "  return not (self == other)" << endl <<
-    endl;
-
-  indent_down();
 }
 
 /**
@@ -638,17 +610,43 @@ void t_el_generator::generate_el_struct_reader(ofstream& out,
 
     out <<
       indent() << "    " << cond_beg << "((equal fid " << field_key << ") ; '" << field_name << "' element\n" <<
-      indent() << "           (if (equal ftype (thrift-constant-type '" << field_type_type << "))\n" <<
-      indent() << "               (setq res-what (thrift-protocol-read-" << field_type_type << " protocol))\n" <<
+      indent() << "           (if (equal ftype (thrift-constant-type '" << field_type_type << "))\n";
+
+    if ((*m_iter)->get_type()->is_struct() || (*m_iter)->get_type()->is_enum()) {
+      out <<
+	indent() << "               (setq res-" << field_name << " (thrift-gen-" <<
+	get_real_el_module((*m_iter)->get_type()->get_program()) << "-read-" <<
+	(*m_iter)->get_type()->get_name() << " protocol))\n";
+    } else {
+      out <<
+	indent() << "               (setq res-" << field_name <<
+	" (thrift-protocol-read-" << field_type_type << " protocol))\n";
+    }
+
+    out <<
       indent() << "             (thrift-protocol-skip protocol ftype)))\n";
 
     cond_beg = "      ";
   }
 
   out <<
-    indent() << "      (thrift-protocol-read-field-end protocol)))\n" <<
-    indent() << "  (thrift-protocol-read-struct-end protocol)\n" <<
-    indent() << "  (list res-what res-why))\n" << endl;
+    indent() << "          (t\n" <<
+    indent() << "           (thrift-protocol-skip protocol ftype)))\n";
+
+  out <<
+    indent() << "    (thrift-protocol-read-field-end protocol)))\n" <<
+    indent() << "(thrift-protocol-read-struct-end protocol)\n";
+
+  out <<
+    indent() << "(list";
+  for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
+    string field_name = (*m_iter)->get_name();
+    out << " res-" << field_name;
+  }
+  out << "))\n" << endl;
+
+  indent_down();
+
 }
 
 
@@ -692,42 +690,54 @@ void t_el_generator::generate_el_struct_writer(ofstream& out,
     }
 
     out <<
-      "  ;; encode " <<  field_name << "\n" <<
+      "  ;; Encode " <<  field_name << "\n" <<
       "  (when (plist-get in :" << field_name << ")\n" <<
       "    (thrift-protocol-write-field-begin protocol\n" <<
       "                                       \"" << field_name << "\"\n" <<
       "                                       (thrift-constant-type '" << field_type_type << ")\n" <<
-      "                                       " << field_key << ")\n" <<
-      "    (thrift-protocol-write-" << field_type << " protocol (plist-get in :" << field_name << "))\n" <<
+      "                                       " << field_key << ")\n";
+
+    if ((*m_iter)->get_type()->is_struct() || (*m_iter)->get_type()->is_enum()) {
+      out <<
+	"    (thrift-gen-" << get_real_el_module((*m_iter)->get_type()->get_program()) <<
+	"-write-" << (*m_iter)->get_type()->get_name() << " protocol (plist-get in :" << field_name << "))\n";
+    } else {
+      out <<
+	"    (thrift-protocol-write-" << field_type << " protocol (plist-get in :" << field_name << "))\n";
+    }
+
+    out <<
       "    (thrift-protocol-write-field-end protocol))" << endl;
   }
   out <<
     "  (thrift-protocol-write-field-stop protocol)\n" <<
     "  (thrift-protocol-write-struct-end protocol))\n\n" << endl;
+
+  indent_down();
 }
 
 void t_el_generator::generate_el_struct_required_validator(ofstream& out,
 							   t_struct* tstruct) {
-  indent(out) << "def validate(self):" << endl;
-  indent_up();
+  // indent(out) << "def validate(self):" << endl;
+  // indent_up();
 
-  const vector<t_field*>& fields = tstruct->get_members();
+  // const vector<t_field*>& fields = tstruct->get_members();
 
-  if (fields.size() > 0) {
-    vector<t_field*>::const_iterator f_iter;
+  // if (fields.size() > 0) {
+  //   vector<t_field*>::const_iterator f_iter;
 
-    for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-      t_field* field = (*f_iter);
-      if (field->get_req() == t_field::T_REQUIRED) {
-	indent(out) << "if self." << field->get_name() << " is None:" << endl;
-	indent(out) << "  raise TProtocol.TProtocolException(message='Required field " <<
-	  field->get_name() << " is unset!')" << endl;
-      }
-    }
-  }
+  //   for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
+  //     t_field* field = (*f_iter);
+  //     if (field->get_req() == t_field::T_REQUIRED) {
+  //	indent(out) << "if self." << field->get_name() << " is None:" << endl;
+  //	indent(out) << "  raise TProtocol.TProtocolException(message='Required field " <<
+  //	  field->get_name() << " is unset!')" << endl;
+  //     }
+  //   }
+  // }
 
-  indent(out) << "return" << endl << endl;
-  indent_down();
+  // indent(out) << "return" << endl << endl;
+  // indent_down();
 }
 
 /**
@@ -1151,7 +1161,7 @@ void t_el_generator::generate_service_remote(t_service* tservice) {
  * @param tservice The service to generate a server for.
  */
 void t_el_generator::generate_service_server(t_service* tservice) {
-  f_service_ << ";;\n;; Here will come the definition of the processor\n;;\n" << endl;
+  // f_service_ << ";;\n;; Here will come the definition of the processor\n;;\n" << endl;
 }
 
 /**
@@ -1161,96 +1171,96 @@ void t_el_generator::generate_service_server(t_service* tservice) {
  */
 void t_el_generator::generate_process_function(t_service* tservice,
 					       t_function* tfunction) {
-  (void) tservice;
-  // Open function
-  f_service_ <<
-    indent() << "def process_" << tfunction->get_name() <<
-    "(self, seqid, iprot, oprot):" << endl;
+  // (void) tservice;
+  // // Open function
+  // f_service_ <<
+  //   indent() << "def process_" << tfunction->get_name() <<
+  //   "(self, seqid, iprot, oprot):" << endl;
 
-  indent_up();
+  // indent_up();
 
-  string argsname = tfunction->get_name() + "_args";
-  string resultname = tfunction->get_name() + "_result";
+  // string argsname = tfunction->get_name() + "_args";
+  // string resultname = tfunction->get_name() + "_result";
 
-  f_service_ <<
-    indent() << "args = " << argsname << "()" << endl <<
-    indent() << "args.read(iprot)" << endl <<
-    indent() << "iprot.readMessageEnd()" << endl;
+  // f_service_ <<
+  //   indent() << "args = " << argsname << "()" << endl <<
+  //   indent() << "args.read(iprot)" << endl <<
+  //   indent() << "iprot.readMessageEnd()" << endl;
 
-  t_struct* xs = tfunction->get_xceptions();
-  const std::vector<t_field*>& xceptions = xs->get_members();
-  vector<t_field*>::const_iterator x_iter;
+  // t_struct* xs = tfunction->get_xceptions();
+  // const std::vector<t_field*>& xceptions = xs->get_members();
+  // vector<t_field*>::const_iterator x_iter;
 
-  // Declare result for non oneway function
-  if (!tfunction->is_oneway()) {
-    f_service_ <<
-      indent() << "result = " << resultname << "()" << endl;
-  }
+  // // Declare result for non oneway function
+  // if (!tfunction->is_oneway()) {
+  //   f_service_ <<
+  //     indent() << "result = " << resultname << "()" << endl;
+  // }
 
-  // Try block for a function with exceptions
-  if (xceptions.size() > 0) {
-    f_service_ <<
-      indent() << "try:" << endl;
-    indent_up();
-  }
+  // // Try block for a function with exceptions
+  // if (xceptions.size() > 0) {
+  //   f_service_ <<
+  //     indent() << "try:" << endl;
+  //   indent_up();
+  // }
 
-  // Generate the function call
-  t_struct* arg_struct = tfunction->get_arglist();
-  const std::vector<t_field*>& fields = arg_struct->get_members();
-  vector<t_field*>::const_iterator f_iter;
+  // // Generate the function call
+  // t_struct* arg_struct = tfunction->get_arglist();
+  // const std::vector<t_field*>& fields = arg_struct->get_members();
+  // vector<t_field*>::const_iterator f_iter;
 
-  f_service_ << indent();
-  if (!tfunction->is_oneway() && !tfunction->get_returntype()->is_void()) {
-    f_service_ << "result.success = ";
-  }
-  f_service_ <<
-    "self._handler." << tfunction->get_name() << "(";
-  bool first = true;
-  for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
-    if (first) {
-      first = false;
-    } else {
-      f_service_ << ", ";
-    }
-    f_service_ << "args." << (*f_iter)->get_name();
-  }
-  f_service_ << ")" << endl;
+  // f_service_ << indent();
+  // if (!tfunction->is_oneway() && !tfunction->get_returntype()->is_void()) {
+  //   f_service_ << "result.success = ";
+  // }
+  // f_service_ <<
+  //   "self._handler." << tfunction->get_name() << "(";
+  // bool first = true;
+  // for (f_iter = fields.begin(); f_iter != fields.end(); ++f_iter) {
+  //   if (first) {
+  //     first = false;
+  //   } else {
+  //     f_service_ << ", ";
+  //   }
+  //   f_service_ << "args." << (*f_iter)->get_name();
+  // }
+  // f_service_ << ")" << endl;
 
-  if (!tfunction->is_oneway() && xceptions.size() > 0) {
-    indent_down();
-    for (x_iter = xceptions.begin(); x_iter != xceptions.end(); ++x_iter) {
-      f_service_ <<
-	indent() << "except " << type_name((*x_iter)->get_type()) << ", " << (*x_iter)->get_name() << ":" << endl;
-      if (!tfunction->is_oneway()) {
-	indent_up();
-	f_service_ <<
-	  indent() << "result." << (*x_iter)->get_name() << " = " << (*x_iter)->get_name() << endl;
-	indent_down();
-      } else {
-	f_service_ <<
-	  indent() << "pass" << endl;
-      }
-    }
-  }
+  // if (!tfunction->is_oneway() && xceptions.size() > 0) {
+  //   indent_down();
+  //   for (x_iter = xceptions.begin(); x_iter != xceptions.end(); ++x_iter) {
+  //     f_service_ <<
+  //	indent() << "except " << type_name((*x_iter)->get_type()) << ", " << (*x_iter)->get_name() << ":" << endl;
+  //     if (!tfunction->is_oneway()) {
+  //	indent_up();
+  //	f_service_ <<
+  //	  indent() << "result." << (*x_iter)->get_name() << " = " << (*x_iter)->get_name() << endl;
+  //	indent_down();
+  //     } else {
+  //	f_service_ <<
+  //	  indent() << "pass" << endl;
+  //     }
+  //   }
+  // }
 
-  // Shortcut out here for oneway functions
-  if (tfunction->is_oneway()) {
-    f_service_ <<
-      indent() << "return" << endl;
-    indent_down();
-    f_service_ << endl;
-    return;
-  }
+  // // Shortcut out here for oneway functions
+  // if (tfunction->is_oneway()) {
+  //   f_service_ <<
+  //     indent() << "return" << endl;
+  //   indent_down();
+  //   f_service_ << endl;
+  //   return;
+  // }
 
-  f_service_ <<
-    indent() << "oprot.write-message-begin(\"" << tfunction->get_name() << "\", TMessageType.REPLY, seqid)" << endl <<
-    indent() << "result.write(oprot)" << endl <<
-    indent() << "oprot.writeMessageEnd()" << endl <<
-    indent() << "oprot.trans.flush()" << endl;
+  // f_service_ <<
+  //   indent() << "oprot.write-message-begin(\"" << tfunction->get_name() << "\", TMessageType.REPLY, seqid)" << endl <<
+  //   indent() << "result.write(oprot)" << endl <<
+  //   indent() << "oprot.writeMessageEnd()" << endl <<
+  //   indent() << "oprot.trans.flush()" << endl;
 
-  // Close function
-  indent_down();
-  f_service_ << endl;
+  // // Close function
+  // indent_down();
+  // f_service_ << endl;
 }
 
 /**
@@ -1332,68 +1342,68 @@ void t_el_generator::generate_deserialize_field(ofstream &out,
 void t_el_generator::generate_deserialize_struct(ofstream &out,
 						  t_struct* tstruct,
 						  string prefix) {
-  out <<
-    indent() << prefix << " = " << type_name(tstruct) << "()" << endl <<
-    indent() << prefix << ".read(iprot)" << endl;
+//   out <<
+//     indent() << prefix << " = " << type_name(tstruct) << "()" << endl <<
+//     indent() << prefix << ".read(iprot)" << endl;
 }
 
-/**
- * Serialize a container by writing out the header followed by
- * data and then a footer.
- */
+// /**
+//  * Serialize a container by writing out the header followed by
+//  * data and then a footer.
+//  */
 void t_el_generator::generate_deserialize_container(ofstream &out,
 						    t_type* ttype,
 						    string prefix) {
-  string size = tmp("_size");
-  string ktype = tmp("_ktype");
-  string vtype = tmp("_vtype");
-  string etype = tmp("_etype");
+//   string size = tmp("_size");
+//   string ktype = tmp("_ktype");
+//   string vtype = tmp("_vtype");
+//   string etype = tmp("_etype");
 
-  t_field fsize(g_type_i32, size);
-  t_field fktype(g_type_byte, ktype);
-  t_field fvtype(g_type_byte, vtype);
-  t_field fetype(g_type_byte, etype);
+//   t_field fsize(g_type_i32, size);
+//   t_field fktype(g_type_byte, ktype);
+//   t_field fvtype(g_type_byte, vtype);
+//   t_field fetype(g_type_byte, etype);
 
-  // Declare variables, read header
-  if (ttype->is_map()) {
-    out <<
-      indent() << prefix << " = {}" << endl <<
-      indent() << "(" << ktype << ", " << vtype << ", " << size << " ) = iprot.readMapBegin()" << endl;
-  } else if (ttype->is_set()) {
-    out <<
-      indent() << prefix << " = set()" << endl <<
-      indent() << "(" << etype << ", " << size << ") = iprot.readSetBegin()" << endl;
-  } else if (ttype->is_list()) {
-    out <<
-      indent() << prefix << " = []" << endl <<
-      indent() << "(" << etype << ", " << size << ") = iprot.readListBegin()" << endl;
-  }
+//   // Declare variables, read header
+//   if (ttype->is_map()) {
+//     out <<
+//       indent() << prefix << " = {}" << endl <<
+//       indent() << "(" << ktype << ", " << vtype << ", " << size << " ) = iprot.readMapBegin()" << endl;
+//   } else if (ttype->is_set()) {
+//     out <<
+//       indent() << prefix << " = set()" << endl <<
+//       indent() << "(" << etype << ", " << size << ") = iprot.readSetBegin()" << endl;
+//   } else if (ttype->is_list()) {
+//     out <<
+//       indent() << prefix << " = []" << endl <<
+//       indent() << "(" << etype << ", " << size << ") = iprot.readListBegin()" << endl;
+//   }
 
-  // For loop iterates over elements
-  string i = tmp("_i");
-  indent(out) <<
-    "for " << i << " in xrange(" << size << "):" << endl;
+//   // For loop iterates over elements
+//   string i = tmp("_i");
+//   indent(out) <<
+//     "for " << i << " in xrange(" << size << "):" << endl;
 
-    indent_up();
+//     indent_up();
 
-    if (ttype->is_map()) {
-      generate_deserialize_map_element(out, (t_map*)ttype, prefix);
-    } else if (ttype->is_set()) {
-      generate_deserialize_set_element(out, (t_set*)ttype, prefix);
-    } else if (ttype->is_list()) {
-      generate_deserialize_list_element(out, (t_list*)ttype, prefix);
-    }
+//     if (ttype->is_map()) {
+//       generate_deserialize_map_element(out, (t_map*)ttype, prefix);
+//     } else if (ttype->is_set()) {
+//       generate_deserialize_set_element(out, (t_set*)ttype, prefix);
+//     } else if (ttype->is_list()) {
+//       generate_deserialize_list_element(out, (t_list*)ttype, prefix);
+//     }
 
-    indent_down();
+//     indent_down();
 
-  // Read container end
-  if (ttype->is_map()) {
-    indent(out) << "iprot.readMapEnd()" << endl;
-  } else if (ttype->is_set()) {
-    indent(out) << "iprot.readSetEnd()" << endl;
-  } else if (ttype->is_list()) {
-    indent(out) << "iprot.readListEnd()" << endl;
-  }
+//   // Read container end
+//   if (ttype->is_map()) {
+//     indent(out) << "iprot.readMapEnd()" << endl;
+//   } else if (ttype->is_set()) {
+//     indent(out) << "iprot.readSetEnd()" << endl;
+//   } else if (ttype->is_list()) {
+//     indent(out) << "iprot.readListEnd()" << endl;
+//   }
 }
 
 
@@ -1403,16 +1413,16 @@ void t_el_generator::generate_deserialize_container(ofstream &out,
 void t_el_generator::generate_deserialize_map_element(ofstream &out,
 						       t_map* tmap,
 						       string prefix) {
-  string key = tmp("_key");
-  string val = tmp("_val");
-  t_field fkey(tmap->get_key_type(), key);
-  t_field fval(tmap->get_val_type(), val);
+  // string key = tmp("_key");
+  // string val = tmp("_val");
+  // t_field fkey(tmap->get_key_type(), key);
+  // t_field fval(tmap->get_val_type(), val);
 
-  generate_deserialize_field(out, &fkey);
-  generate_deserialize_field(out, &fval);
+  // generate_deserialize_field(out, &fkey);
+  // generate_deserialize_field(out, &fval);
 
-  indent(out) <<
-    prefix << "[" << key << "] = " << val << endl;
+  // indent(out) <<
+  //   prefix << "[" << key << "] = " << val << endl;
 }
 
 /**
@@ -1421,13 +1431,13 @@ void t_el_generator::generate_deserialize_map_element(ofstream &out,
 void t_el_generator::generate_deserialize_set_element(ofstream &out,
 						       t_set* tset,
 						       string prefix) {
-  string elem = tmp("_elem");
-  t_field felem(tset->get_elem_type(), elem);
+  // string elem = tmp("_elem");
+  // t_field felem(tset->get_elem_type(), elem);
 
-  generate_deserialize_field(out, &felem);
+  // generate_deserialize_field(out, &felem);
 
-  indent(out) <<
-    prefix << ".add(" << elem << ")" << endl;
+  // indent(out) <<
+  //   prefix << ".add(" << elem << ")" << endl;
 }
 
 /**
@@ -1436,13 +1446,13 @@ void t_el_generator::generate_deserialize_set_element(ofstream &out,
 void t_el_generator::generate_deserialize_list_element(ofstream &out,
 							t_list* tlist,
 							string prefix) {
-  string elem = tmp("_elem");
-  t_field felem(tlist->get_elem_type(), elem);
+  // string elem = tmp("_elem");
+  // t_field felem(tlist->get_elem_type(), elem);
 
-  generate_deserialize_field(out, &felem);
+  // generate_deserialize_field(out, &felem);
 
-  indent(out) <<
-    prefix << ".append(" << elem << ")" << endl;
+  // indent(out) <<
+  //   prefix << ".append(" << elem << ")" << endl;
 }
 
 
@@ -1455,74 +1465,74 @@ void t_el_generator::generate_deserialize_list_element(ofstream &out,
 void t_el_generator::generate_serialize_field(ofstream &out,
 					       t_field* tfield,
 					       string prefix) {
-  t_type* type = get_true_type(tfield->get_type());
+  // t_type* type = get_true_type(tfield->get_type());
 
-  // Do nothing for void types
-  if (type->is_void()) {
-    throw "CANNOT GENERATE SERIALIZE CODE FOR void TYPE: " +
-      prefix + tfield->get_name();
-  }
+  // // Do nothing for void types
+  // if (type->is_void()) {
+  //   throw "CANNOT GENERATE SERIALIZE CODE FOR void TYPE: " +
+  //     prefix + tfield->get_name();
+  // }
 
-  if (type->is_struct() || type->is_xception()) {
-    generate_serialize_struct(out,
-			      (t_struct*)type,
-			      prefix + tfield->get_name());
-  } else if (type->is_container()) {
-    generate_serialize_container(out,
-				 type,
-				 prefix + tfield->get_name());
-  } else if (type->is_base_type() || type->is_enum()) {
+  // if (type->is_struct() || type->is_xception()) {
+  //   generate_serialize_struct(out,
+  //			      (t_struct*)type,
+  //			      prefix + tfield->get_name());
+  // } else if (type->is_container()) {
+  //   generate_serialize_container(out,
+  //				 type,
+  //				 prefix + tfield->get_name());
+  // } else if (type->is_base_type() || type->is_enum()) {
 
-    string name = prefix + tfield->get_name();
+  //   string name = prefix + tfield->get_name();
 
-    indent(out) <<
-      "oprot.";
+  //   indent(out) <<
+  //     "oprot.";
 
-    if (type->is_base_type()) {
-      t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
-      switch (tbase) {
-      case t_base_type::TYPE_VOID:
-	throw
-	  "compiler error: cannot serialize void field in a struct: " + name;
-	break;
-      case t_base_type::TYPE_STRING:
-	if (((t_base_type*)type)->is_binary() || !gen_utf8strings_) {
-	  out << "writeString(" << name << ")";
-	} else {
-	  out << "writeString(" << name << ".encode('utf-8'))";
-	}
-	break;
-      case t_base_type::TYPE_BOOL:
-	out << "writeBool(" << name << ")";
-	break;
-      case t_base_type::TYPE_BYTE:
-	out << "writeByte(" << name << ")";
-	break;
-      case t_base_type::TYPE_I16:
-	out << "writeI16(" << name << ")";
-	break;
-      case t_base_type::TYPE_I32:
-	out << "writeI32(" << name << ")";
-	break;
-      case t_base_type::TYPE_I64:
-	out << "writeI64(" << name << ")";
-	break;
-      case t_base_type::TYPE_DOUBLE:
-	out << "writeDouble(" << name << ")";
-	break;
-      default:
-	throw "compiler error: no Elisp name for base type " + t_base_type::t_base_name(tbase);
-      }
-    } else if (type->is_enum()) {
-      out << "writeI32(" << name << ")";
-    }
-    out << endl;
-  } else {
-    printf("DO NOT KNOW HOW TO SERIALIZE FIELD '%s%s' TYPE '%s'\n",
-	   prefix.c_str(),
-	   tfield->get_name().c_str(),
-	   type->get_name().c_str());
-  }
+  //   if (type->is_base_type()) {
+  //     t_base_type::t_base tbase = ((t_base_type*)type)->get_base();
+  //     switch (tbase) {
+  //     case t_base_type::TYPE_VOID:
+  //	throw
+  //	  "compiler error: cannot serialize void field in a struct: " + name;
+  //	break;
+  //     case t_base_type::TYPE_STRING:
+  //	if (((t_base_type*)type)->is_binary() || !gen_utf8strings_) {
+  //	  out << "writeString(" << name << ")";
+  //	} else {
+  //	  out << "writeString(" << name << ".encode('utf-8'))";
+  //	}
+  //	break;
+  //     case t_base_type::TYPE_BOOL:
+  //	out << "writeBool(" << name << ")";
+  //	break;
+  //     case t_base_type::TYPE_BYTE:
+  //	out << "writeByte(" << name << ")";
+  //	break;
+  //     case t_base_type::TYPE_I16:
+  //	out << "writeI16(" << name << ")";
+  //	break;
+  //     case t_base_type::TYPE_I32:
+  //	out << "writeI32(" << name << ")";
+  //	break;
+  //     case t_base_type::TYPE_I64:
+  //	out << "writeI64(" << name << ")";
+  //	break;
+  //     case t_base_type::TYPE_DOUBLE:
+  //	out << "writeDouble(" << name << ")";
+  //	break;
+  //     default:
+  //	throw "compiler error: no Elisp name for base type " + t_base_type::t_base_name(tbase);
+  //     }
+  //   } else if (type->is_enum()) {
+  //     out << "writeI32(" << name << ")";
+  //   }
+  //   out << endl;
+  // } else {
+  //   printf("DO NOT KNOW HOW TO SERIALIZE FIELD '%s%s' TYPE '%s'\n",
+  //	   prefix.c_str(),
+  //	   tfield->get_name().c_str(),
+  //	   type->get_name().c_str());
+  // }
 }
 
 /**
@@ -1534,65 +1544,65 @@ void t_el_generator::generate_serialize_field(ofstream &out,
 void t_el_generator::generate_serialize_struct(ofstream &out,
 					       t_struct* tstruct,
 					       string prefix) {
-  (void) tstruct;
-  indent(out) << prefix << ".write(oprot)" << endl;
+  // (void) tstruct;
+  // indent(out) << prefix << ".write(oprot)" << endl;
 }
 
 void t_el_generator::generate_serialize_container(ofstream &out,
 						  t_type* ttype,
 						  string prefix) {
-  if (ttype->is_map()) {
-    indent(out) <<
-      "oprot.writeMapBegin(" <<
-      type_to_enum(((t_map*)ttype)->get_key_type()) << ", " <<
-      type_to_enum(((t_map*)ttype)->get_val_type()) << ", " <<
-      "len(" << prefix << "))" << endl;
-  } else if (ttype->is_set()) {
-    indent(out) <<
-      "oprot.writeSetBegin(" <<
-      type_to_enum(((t_set*)ttype)->get_elem_type()) << ", " <<
-      "len(" << prefix << "))" << endl;
-  } else if (ttype->is_list()) {
-    indent(out) <<
-      "oprot.writeListBegin(" <<
-      type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " <<
-      "len(" << prefix << "))" << endl;
-  }
+  // if (ttype->is_map()) {
+  //   indent(out) <<
+  //     "oprot.writeMapBegin(" <<
+  //     type_to_enum(((t_map*)ttype)->get_key_type()) << ", " <<
+  //     type_to_enum(((t_map*)ttype)->get_val_type()) << ", " <<
+  //     "len(" << prefix << "))" << endl;
+  // } else if (ttype->is_set()) {
+  //   indent(out) <<
+  //     "oprot.writeSetBegin(" <<
+  //     type_to_enum(((t_set*)ttype)->get_elem_type()) << ", " <<
+  //     "len(" << prefix << "))" << endl;
+  // } else if (ttype->is_list()) {
+  //   indent(out) <<
+  //     "oprot.writeListBegin(" <<
+  //     type_to_enum(((t_list*)ttype)->get_elem_type()) << ", " <<
+  //     "len(" << prefix << "))" << endl;
+  // }
 
-  if (ttype->is_map()) {
-    string kiter = tmp("kiter");
-    string viter = tmp("viter");
-    indent(out) <<
-      "for " << kiter << "," << viter << " in " << prefix << ".items():" << endl;
-    indent_up();
-    generate_serialize_map_element(out, (t_map*)ttype, kiter, viter);
-    indent_down();
-  } else if (ttype->is_set()) {
-    string iter = tmp("iter");
-    indent(out) <<
-      "for " << iter << " in " << prefix << ":" << endl;
-    indent_up();
-    generate_serialize_set_element(out, (t_set*)ttype, iter);
-    indent_down();
-  } else if (ttype->is_list()) {
-    string iter = tmp("iter");
-    indent(out) <<
-      "for " << iter << " in " << prefix << ":" << endl;
-    indent_up();
-    generate_serialize_list_element(out, (t_list*)ttype, iter);
-    indent_down();
-  }
+  // if (ttype->is_map()) {
+  //   string kiter = tmp("kiter");
+  //   string viter = tmp("viter");
+  //   indent(out) <<
+  //     "for " << kiter << "," << viter << " in " << prefix << ".items():" << endl;
+  //   indent_up();
+  //   generate_serialize_map_element(out, (t_map*)ttype, kiter, viter);
+  //   indent_down();
+  // } else if (ttype->is_set()) {
+  //   string iter = tmp("iter");
+  //   indent(out) <<
+  //     "for " << iter << " in " << prefix << ":" << endl;
+  //   indent_up();
+  //   generate_serialize_set_element(out, (t_set*)ttype, iter);
+  //   indent_down();
+  // } else if (ttype->is_list()) {
+  //   string iter = tmp("iter");
+  //   indent(out) <<
+  //     "for " << iter << " in " << prefix << ":" << endl;
+  //   indent_up();
+  //   generate_serialize_list_element(out, (t_list*)ttype, iter);
+  //   indent_down();
+  // }
 
-  if (ttype->is_map()) {
-    indent(out) <<
-      "oprot.writeMapEnd()" << endl;
-  } else if (ttype->is_set()) {
-    indent(out) <<
-      "oprot.writeSetEnd()" << endl;
-  } else if (ttype->is_list()) {
-    indent(out) <<
-      "oprot.writeListEnd()" << endl;
-  }
+  // if (ttype->is_map()) {
+  //   indent(out) <<
+  //     "oprot.writeMapEnd()" << endl;
+  // } else if (ttype->is_set()) {
+  //   indent(out) <<
+  //     "oprot.writeSetEnd()" << endl;
+  // } else if (ttype->is_list()) {
+  //   indent(out) <<
+  //     "oprot.writeListEnd()" << endl;
+  // }
 }
 
 /**
@@ -1603,11 +1613,11 @@ void t_el_generator::generate_serialize_map_element(ofstream &out,
 						     t_map* tmap,
 						     string kiter,
 						     string viter) {
-  t_field kfield(tmap->get_key_type(), kiter);
-  generate_serialize_field(out, &kfield, "");
+  // t_field kfield(tmap->get_key_type(), kiter);
+  // generate_serialize_field(out, &kfield, "");
 
-  t_field vfield(tmap->get_val_type(), viter);
-  generate_serialize_field(out, &vfield, "");
+  // t_field vfield(tmap->get_val_type(), viter);
+  // generate_serialize_field(out, &vfield, "");
 }
 
 /**
@@ -1706,15 +1716,16 @@ void t_el_generator::generate_elisp_docstring(ofstream& out,
  * @param tfield The field
  */
 string t_el_generator::declare_argument(t_field* tfield) {
-  std::ostringstream result;
-  result << tfield->get_name() << "=";
-  if (tfield->get_value() != NULL) {
-    result << "thrift_spec[" <<
-      tfield->get_key() << "][4]";
-  } else {
-    result << "None";
-  }
-  return result.str();
+  // std::ostringstream result;
+  // result << tfield->get_name() << "=";
+  // if (tfield->get_value() != NULL) {
+  //   result << "thrift_spec[" <<
+  //     tfield->get_key() << "][4]";
+  // } else {
+  //   result << "None";
+  // }
+  // return result.str();
+  return "";
 }
 
 /**
@@ -1723,12 +1734,13 @@ string t_el_generator::declare_argument(t_field* tfield) {
  * @param tfield The field
  */
 string t_el_generator::render_field_default_value(t_field* tfield) {
-  t_type* type = get_true_type(tfield->get_type());
-  if (tfield->get_value() != NULL) {
-    return render_const_value(type, tfield->get_value());
-  } else {
-    return "None";
-  }
+  // t_type* type = get_true_type(tfield->get_type());
+  // if (tfield->get_value() != NULL) {
+  //   return render_const_value(type, tfield->get_value());
+  // } else {
+  //   return "None";
+  // }
+  return "";
 }
 
 /**
@@ -1738,12 +1750,13 @@ string t_el_generator::render_field_default_value(t_field* tfield) {
  * @return String of rendered function definition
  */
 string t_el_generator::function_signature(t_function* tfunction) {
-  vector<string> pre;
-  vector<string> post;
-  string signature = "(" + tfunction->get_name();
+  // vector<string> pre;
+  // vector<string> post;
+  // string signature = "(" + tfunction->get_name();
 
-  signature += argument_list(tfunction->get_arglist(), &pre, &post) + ")";
-  return signature;
+  // signature += argument_list(tfunction->get_arglist(), &pre, &post) + ")";
+  // return signature;
+  return "";
 }
 
 /**
@@ -1840,47 +1853,38 @@ string t_el_generator::type_to_enum(t_type* type) {
 }
 
 /** See the comment inside generate_el_struct_definition for what this is. */
-string t_el_generator::type_to_spec_args(t_type* ttype) {
-  while (ttype->is_typedef()) {
-    ttype = ((t_typedef*)ttype)->get_type();
-  }
+// string t_el_generator::type_to_spec_args(t_type* ttype) {
+//   while (ttype->is_typedef()) {
+//     ttype = ((t_typedef*)ttype)->get_type();
+//   }
 
-  if (ttype->is_base_type() || ttype->is_enum()) {
-    return "None";
-  } else if (ttype->is_struct() || ttype->is_xception()) {
-    return "(" + type_name(ttype) + ", " + type_name(ttype) + ".thrift_spec)";
-  } else if (ttype->is_map()) {
-    return "(" +
-      type_to_enum(((t_map*)ttype)->get_key_type()) + "," +
-      type_to_spec_args(((t_map*)ttype)->get_key_type()) + "," +
-      type_to_enum(((t_map*)ttype)->get_val_type()) + "," +
-      type_to_spec_args(((t_map*)ttype)->get_val_type()) +
-      ")";
+//   if (ttype->is_base_type() || ttype->is_enum()) {
+//     return "None";
+//   } else if (ttype->is_struct() || ttype->is_xception()) {
+//     return "(" + type_name(ttype) + ", " + type_name(ttype) + ".thrift_spec)";
+//   } else if (ttype->is_map()) {
+//     return "(" +
+//       type_to_enum(((t_map*)ttype)->get_key_type()) + "," +
+//       type_to_spec_args(((t_map*)ttype)->get_key_type()) + "," +
+//       type_to_enum(((t_map*)ttype)->get_val_type()) + "," +
+//       type_to_spec_args(((t_map*)ttype)->get_val_type()) +
+//       ")";
 
-  } else if (ttype->is_set()) {
-    return "(" +
-      type_to_enum(((t_set*)ttype)->get_elem_type()) + "," +
-      type_to_spec_args(((t_set*)ttype)->get_elem_type()) +
-      ")";
+//   } else if (ttype->is_set()) {
+//     return "(" +
+//       type_to_enum(((t_set*)ttype)->get_elem_type()) + "," +
+//       type_to_spec_args(((t_set*)ttype)->get_elem_type()) +
+//       ")";
 
-  } else if (ttype->is_list()) {
-    return "(" +
-      type_to_enum(((t_list*)ttype)->get_elem_type()) + "," +
-      type_to_spec_args(((t_list*)ttype)->get_elem_type()) +
-      ")";
-  }
+//   } else if (ttype->is_list()) {
+//     return "(" +
+//       type_to_enum(((t_list*)ttype)->get_elem_type()) + "," +
+//       type_to_spec_args(((t_list*)ttype)->get_elem_type()) +
+//       ")";
+//   }
 
-  throw "INVALID TYPE IN type_to_spec_args: " + ttype->get_name();
-}
+//   throw "INVALID TYPE IN type_to_spec_args: " + ttype->get_name();
+// }
 
 
-THRIFT_REGISTER_GENERATOR(el, "Elisp",
-"    new_style:       Generate new-style classes.\n" \
-"    twisted:         Generate Twisted-friendly RPC services.\n" \
-"    tornado:         Generate code for use with Tornado.\n" \
-"    utf8strings:     Encode/decode strings using utf8 in the generated code.\n" \
-"    slots:           Generate code using slots for instance members.\n" \
-"    dynamic:         Generate dynamic code, less code generated but slower.\n" \
-"    dynexc=CLS       Derive generated exceptions from CLS instead of TExceptionBase.\n" \
-"    dynimport='from foo.bar import CLS'\n" \
-"                     Add an import line to generated code to find the dynbase class.\n")
+THRIFT_REGISTER_GENERATOR(el, "Elisp", "")
