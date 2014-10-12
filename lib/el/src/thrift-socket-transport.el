@@ -20,6 +20,7 @@
 
 (defmethod thrift-transport-open ((trans thrift-base-transport))
   "Open the transport."
+  ;; todo: Remove this global variable!!!
   (setq transport trans)
   (defun trans-filter (process data)
     (let ((recv (string-to-unibyte data)))
@@ -30,7 +31,7 @@
       ;; Notify client that received data are available
       (funcall (oref transport callback))))
   (defun trans-sentinel (process event)
-    (message "transport event: %s" (substring event 0 -1)))
+    (message "thrift: transport event: %s" (substring event 0 -1)))
   (oset trans network-process (make-network-process :name "*thrift*"
 						    :type nil
 						    :server nil
