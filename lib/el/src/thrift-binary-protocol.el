@@ -133,7 +133,7 @@
 	(if (not (and (equal version1 #x80)
 		      (equal version2 #x01)))
 	    (error "Bad version in read-message-begin"))
-	(thrift-protocol-read-byte prot)             ; useless byte
+	(thrift-protocol-read-byte prot) ; useless byte
 	(setq type (thrift-protocol-read-byte prot))
 	(setq name (thrift-protocol-read-string prot))
 	(setq seqid (thrift-protocol-read-i32 prot)))

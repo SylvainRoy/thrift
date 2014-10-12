@@ -361,7 +361,13 @@ void t_el_generator::generate_enum(t_enum* tenum) {
       escape_string((*c_iter)->get_name()) << ") " << value << ")";
     beg_cond = "\n        ";
   }
-  f_types_ << "))\n" << endl;
+  f_types_ << "\n" <<
+    "        " << "((symbolp in)\n" <<
+    "        " << " (error \"%s is not a valid value of the enum '" << tenum->get_name() << "'.\"\n" <<
+    "        " << "        (symbol-name in))\n" <<
+    "        " << "(t\n" <<
+    "        " << " (error \"Wrong value used for enum '" << tenum->get_name() << "'.\")))))\n" << endl;
+
 
   // Function to convert enum symbols from int
   f_types_<<
@@ -374,7 +380,11 @@ void t_el_generator::generate_enum(t_enum* tenum) {
       value << ") '" << escape_string((*c_iter)->get_name()) << ")";
     beg_cond = "\n        ";
   }
-  f_types_ << "))\n\n" << endl;
+  f_types_ << "\n" <<
+    "        " << "((integerp in)\n" <<
+    "        " << " (error \"%s is not a valid value of the enum '" << tenum->get_name() << "'.\"))\n" <<
+    "        " << "(t\n" <<
+    "        " << " (error \"Wrong value used for enum '" << tenum->get_name() << "'.\"))))\n\n" << endl;
 
   // Function to read an enum
   f_types_ <<
@@ -571,26 +581,26 @@ void t_el_generator::generate_el_struct_reader(ofstream& out,
   }
   out << endl;
 
-  out << indent() << ";; Preset result" << endl;
+  string beg = "(let (";
   for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
     string field_name = (*m_iter)->get_name();
     out << indent() <<
-      "(setq res-" << field_name << " nil)" << endl;
+      beg << "(res-" << field_name << " nil)";
+    beg = "\n        ";
   }
+  out << ")" << endl;
 
   out <<
-    indent() << ";; Decode\n" <<
-    indent() << "(thrift-protocol-read-struct-begin protocol)\n" <<
-    indent() << "(catch 'break\n" <<
-    indent() << "  (while t\n" <<
-    indent() << "    (setq r (thrift-protocol-read-field-begin protocol))\n" <<
-    indent() << "    (setq fname (pop r))\n" <<
-    indent() << "    (setq ftype (pop r))\n" <<
-    indent() << "    (setq fid (pop r))\n" <<
-    indent() << "    (if (equal ftype (thrift-constant-type 'stop))\n" <<
-    indent() << "        (throw 'break t))\n";
+    indent() << "  (thrift-protocol-read-struct-begin protocol)\n" <<
+    indent() << "  (catch 'break\n" <<
+    indent() << "    (while t\n" <<
+    indent() << "      (let* ((r (thrift-protocol-read-field-begin protocol))\n" <<
+    indent() << "             (fname (pop r))\n" <<
+    indent() << "             (ftype (pop r))\n" <<
+    indent() << "             (fid (pop r)))\n" <<
+    indent() << "        (cond ((equal ftype (thrift-constant-type 'stop))\n" <<
+    indent() << "               (throw 'break t))\n";
 
-  string cond_beg = "(cond ";
   for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
     string field_name = (*m_iter)->get_name();
     string field_type = (*m_iter)->get_type()->get_name();
@@ -609,41 +619,39 @@ void t_el_generator::generate_el_struct_reader(ofstream& out,
     }
 
     out <<
-      indent() << "    " << cond_beg << "((equal fid " << field_key << ") ; '" << field_name << "' element\n" <<
-      indent() << "           (if (equal ftype (thrift-constant-type '" << field_type_type << "))\n";
+      indent() << "              ((equal fid " << field_key << ") ; '" << field_name << "' element\n" <<
+      indent() << "               (if (equal ftype (thrift-constant-type '" << field_type_type << "))\n";
 
     if ((*m_iter)->get_type()->is_struct() || (*m_iter)->get_type()->is_enum()) {
       out <<
-	indent() << "               (setq res-" << field_name << " (thrift-gen-" <<
+	indent() << "                   (setq res-" << field_name << " (thrift-gen-" <<
 	get_real_el_module((*m_iter)->get_type()->get_program()) << "-read-" <<
 	(*m_iter)->get_type()->get_name() << " protocol))\n";
     } else {
       out <<
-	indent() << "               (setq res-" << field_name <<
+	indent() << "                   (setq res-" << field_name <<
 	" (thrift-protocol-read-" << field_type_type << " protocol))\n";
     }
 
     out <<
-      indent() << "             (thrift-protocol-skip protocol ftype)))\n";
-
-    cond_beg = "      ";
+      indent() << "                 (thrift-protocol-skip protocol ftype)))\n";
   }
 
   out <<
-    indent() << "          (t\n" <<
-    indent() << "           (thrift-protocol-skip protocol ftype)))\n";
+    indent() << "              (t\n" <<
+    indent() << "               (thrift-protocol-skip protocol ftype)))\n";
 
   out <<
-    indent() << "    (thrift-protocol-read-field-end protocol)))\n" <<
-    indent() << "(thrift-protocol-read-struct-end protocol)\n";
+    indent() << "        (thrift-protocol-read-field-end protocol))))\n" <<
+    indent() << "  (thrift-protocol-read-struct-end protocol)\n";
 
   out <<
-    indent() << "(list";
+    indent() << "  (list";
   for (m_iter = sorted_members.begin(); m_iter != sorted_members.end(); ++m_iter) {
     string field_name = (*m_iter)->get_name();
     out << " res-" << field_name;
   }
-  out << "))\n" << endl;
+  out << ")))\n" << endl;
 
   indent_down();
 
@@ -870,49 +878,45 @@ void t_el_generator::generate_service_helpers(t_service* tservice) {
       indent_up();
       f_service_ <<
 	indent() << "\"Receive and decode " << fun_name << " response.\"\n" <<
-	indent() << ";; Preset result\n" <<
-	indent() << "(setq res-exception nil)\n" <<
-	indent() << "(setq res-result nil)\n" <<
-	indent() << ";; Decode\n" <<
-	indent() << "(thrift-protocol-read-struct-begin protocol)\n" <<
-	indent() << "(catch 'break\n" <<
-	indent() << "  (while t\n" <<
-	indent() << "    (setq r (thrift-protocol-read-field-begin protocol))\n" <<
-	indent() << "    (setq fname (pop r))\n" <<
-	indent() << "    (setq ftype (pop r))\n" <<
-	indent() << "    (setq fid (pop r))\n" <<
-	indent() << "    (if (equal ftype (thrift-constant-type 'stop))\n" <<
-	indent() << "        (throw 'break t)\n" <<
-	indent() << "      (thrift-protocol-skip protocol ftype))" << endl;
-      // Read/decode return value
-      string close_cond = "";
+	indent() << "(let ((res-exception nil)\n" <<
+	indent() << "      (res-result nil))\n" <<
+	indent() << "  (thrift-protocol-read-struct-begin protocol)\n" <<
+	indent() << "  (catch 'break\n" <<
+	indent() << "    (while t\n" <<
+	indent() << "      (let* ((r (thrift-protocol-read-field-begin protocol))\n" <<
+	indent() << "             (fname (pop r))\n" <<
+	indent() << "             (ftype (pop r))\n" <<
+	indent() << "             (fid (pop r)))\n" <<
+	indent() << "        (cond ((equal ftype (thrift-constant-type 'stop))\n" <<
+	indent() << "               (throw 'break t))\n";
       if (!(*f_iter)->get_returntype()->is_void()) {
-	close_cond = indent() + "          (t\n" + indent() + "           (thrift-protocol-skip protocol ftype)))\n";
 	f_service_ <<
-	  indent() << "    (cond ((equal fid 0) ; Normal return value received\n" <<
-	  indent() << "           (if (equal ftype (thrift-constant-type '" << return_type << "))\n" <<
-	  indent() << "               (setq res-result (thrift-protocol-read-" << return_type << " protocol))\n" <<
-	  indent() << "             (thrift-protocol-skip protocol ftype)))" << endl;
+	  indent() << "              ((equal fid 0) ; Normal return value received\n" <<
+	  indent() << "               (if (equal ftype (thrift-constant-type '" << return_type << "))\n" <<
+	  indent() << "                   (setq res-result (thrift-protocol-read-" << return_type << " protocol))\n" <<
+	  indent() << "                 (thrift-protocol-skip protocol ftype)))" << endl;
       }
       // Read/decode exception
       std::vector<t_field*> xceptions = (*f_iter)->get_xceptions()->get_members();
       vector<t_field*>::const_iterator xc_iter;
       for(xc_iter = xceptions.begin(); xc_iter != xceptions.end(); ++xc_iter){
-	close_cond = indent() + "          (t\n" + indent() + "           (thrift-protocol-skip protocol ftype)))\n";
 	string xc_name = (*xc_iter)->get_name();
 	int32_t xc_key = (*xc_iter)->get_key();
 	string xc_type = (*xc_iter)->get_type()->get_name();
 	f_service_ <<
-	  indent() << "          ((equal fid " << xc_key << ") "
+	  indent() << "              ((equal fid " << xc_key << ") "
 		   << "; " << xc_name << " (" << xc_type << ") exception received\n" <<
-	  indent() << "           (if (equal ftype (thrift-constant-type 'struct))\n" <<
-	  indent() << "               (setq res-error (thrift-gen-" << get_real_el_module((*xc_iter)->get_type()->get_program()) << "-read-" << xc_type << " protocol))\n" <<
-	  indent() << "             (thrift-protocol-skip protocol ftype)))" << endl;
+	  indent() << "               (if (equal ftype (thrift-constant-type 'struct))\n" <<
+	  indent() << "                   (setq res-error (thrift-gen-" << get_real_el_module((*xc_iter)->get_type()->get_program()) << "-read-" << xc_type << " protocol))\n" <<
+	  indent() << "                 (thrift-protocol-skip protocol ftype)))" << endl;
       }
-      f_service_ << close_cond <<
-	indent() << "    (thrift-protocol-read-field-end protocol)))\n" <<
-	indent() << "(thrift-protocol-read-struct-end protocol)\n" <<
-	indent() << "(list res-exception res-result))\n\n" << endl;
+
+      f_service_ <<
+	indent() << "              (t\n" <<
+	indent() << "               (thrift-protocol-skip protocol ftype)))\n" <<
+	indent() << "        (thrift-protocol-read-field-end protocol))))\n" <<
+	indent() << "  (thrift-protocol-read-struct-end protocol)\n" <<
+	indent() << "  (list res-exception res-result)))\n\n" << endl;
       indent_down();
     }
   }

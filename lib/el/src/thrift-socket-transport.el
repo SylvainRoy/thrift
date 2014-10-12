@@ -1,4 +1,5 @@
 (require 'thrift-base-transport)
+(require 'thrift-util)
 
 
 (defclass thrift-socket-transport (thrift-base-transport)
@@ -21,12 +22,13 @@
   "Open the transport."
   (setq transport trans)
   (defun trans-filter (process data)
-    (message (concat "Raw reply received: '" data "'"))
-    ;; Store received data in buffer
-    (oset transport recv-buffer
-	  (concat (oref transport recv-buffer) data))
-    ;; Notify client that received data are available
-    (funcall (oref transport callback)))
+    (let ((recv (string-to-unibyte data)))
+      (message (concat "Raw data received: '" (thrift-pformat recv nil) "'"))
+      ;; Store received data in buffer
+      (oset transport recv-buffer
+	    (concat (oref transport recv-buffer) recv))
+      ;; Notify client that received data are available
+      (funcall (oref transport callback))))
   (defun trans-sentinel (process event)
     (message "transport event: %s" (substring event 0 -1)))
   (oset trans network-process (make-network-process :name "*thrift*"
@@ -45,13 +47,14 @@
 
 (defmethod thrift-transport-read ((trans thrift-base-transport) size)
   "Read data."
-  (setq buffer (oref trans recv-buffer))
-  (setq cursor (oref trans recv-cursor))
-  (if (< (- (length buffer) cursor) size)
-      (throw 'not-enough-data t))
-  (setq out (substring buffer cursor (+ cursor size)))
-  (oset trans recv-cursor (+ cursor size))
-  (string-to-unibyte out))
+  (let ((buffer (oref trans recv-buffer))
+	(cursor (oref trans recv-cursor))
+	out)
+    (if (< (- (length buffer) cursor) size)
+	(throw 'not-enough-data t))
+    (setq out (substring buffer cursor (+ cursor size)))
+    (oset trans recv-cursor (+ cursor size))
+    (string-to-unibyte out)))
 
 
 (defmethod thrift-transport-write ((trans thrift-base-transport) data)

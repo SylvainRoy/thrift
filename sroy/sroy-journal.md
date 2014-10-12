@@ -35,6 +35,8 @@ Compile:
 From the elisp generator:
      cd ../../; make -k; cd ../../tutorial; ../compiler/cpp/thrift --gen el tutorial.thrift
 
+Also check the ./build.sh script in the directory
+
 
 Code:
 =====

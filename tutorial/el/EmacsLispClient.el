@@ -57,7 +57,7 @@
 	     '(:logid 1
 	       :w (:num1    1
 		   :num2    0
-		   :op      divide
+		   :op      DIVIDE
 		   :comment ""))
 	     (lambda (err response)
 	       (message "1/0=%s"
@@ -70,7 +70,7 @@
 	     '(:logid 1
 	       :w (:num1    15
 		   :num2    10
-		   :op      substract
+		   :op      SUBTRACT
 		   :comment "comment"))
 	     (lambda (err response)
 	       (message "15-10=%d" response)
