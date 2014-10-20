@@ -1,0 +1,28 @@
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+  <meta name="test" content="content" />
+  <body>
+    <script type="text/javascript" src="./double.js"></script>
+    <script type="text/javascript">
+      function run()
+      {
+	  var input = '';
+	  input = document.getElementById('in').value;
+	  out1 = writeDouble([], input);
+	  out2 = readDouble(out1, 0);
+	  document.getElementById('out1').value = out1;
+	  document.getElementById('out2').value = out2;
+      };
+    </script>
+    <h1>Double Test Page</h1>
+    <h3>writeDouble:</h3>
+      <form method="" onSubmit="return false">
+	<input type="text" id="in" name="in" value="0" />
+	<input type="submit" onClick="run();" />
+      </form>
+      <textarea name="out1" id="out1" rows="2" cols="50"></textarea>
+      <textarea name="out2" id="out2" rows="2" cols="50"></textarea>
+    <h3>readDouble:</h3>
+    <p>todo...</p>
+  </body>
+</html>
